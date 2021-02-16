@@ -1,0 +1,21 @@
+{
+	"file": "http://localhost:8000/test/1.file.csv",
+	"key": "http://example.com/Thing",
+	"header": false,
+	"columns": [
+		{
+			"key": "http://example.com/name",
+			"nullValue": null,
+			"type": { "kind": "uri" }
+		},
+		null,
+		{
+			"key": "http://example.com/name",
+			"nullValue": null,
+			"type": {
+				"kind": "literal",
+				"datatype": "http://www.w3.org/2001/XMLSchema#integer"
+			}
+		}
+	]
+}

@@ -3,7 +3,6 @@
 	"references": [
 		{ "path": "./pipeline-runtime" },
 		{ "path": "./pipeline-block-components" },
-		{ "path": "./pipeline-block-runtimes" },
 		{ "path": "./block-csv-import-codec" },
 		{ "path": "./block-csv-import-component" },
 		{ "path": "./block-csv-import-runtime" }

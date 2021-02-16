@@ -3,6 +3,8 @@ import { Either } from "fp-ts/Either"
 
 import { Schema, Instance } from "@underlay/apg"
 
+export type Failure = { message: string }
+
 export type Schema = Record<
 	string,
 	{
@@ -16,8 +18,6 @@ export type GetState<S extends Schema, K extends keyof S> = S[K]["state"]
 export type GetInputs<S extends Schema, K extends keyof S> = S[K]["inputs"]
 export type GetOutputs<S extends Schema, K extends keyof S> = S[K]["outputs"]
 
-export type Failure = { message: string }
-
 export type Pipe<
 	State,
 	Inputs extends Record<string, Schema.Schema>,
@@ -25,8 +25,8 @@ export type Pipe<
 > = {
 	codec: {
 		state: t.Type<State>
-		inputs: t.Type<Record<keyof Inputs, null>>
-		outputs: t.Type<Record<keyof Outputs, null>>
+		inputs: t.Type<Record<keyof Inputs, null | ID>>
+		outputs: t.Type<Record<keyof Outputs, ID[]>>
 	}
 	types: { [i in keyof Inputs]: t.Type<Inputs[i]> }
 	validate: (state: State, inputSchemas: Inputs) => Either<Failure, Outputs>
@@ -41,9 +41,7 @@ export type Pipe<
 }
 
 export type Pipeline<S extends Schema> = {
-	[k in keyof S]: Pipe<GetState<S, k>, GetInputs<S, k>, GetOutputs<S, k>> & {
-		nodeCodec: t.Type<Node<S, k>>
-	}
+	[k in keyof S]: Pipe<GetState<S, k>, GetInputs<S, k>, GetOutputs<S, k>>
 }
 
 export type ID = number
@@ -55,7 +53,7 @@ export type Node<S extends Schema, K extends keyof S = keyof S> = {
 		kind: k
 		state: GetState<S, k>
 		inputs: Record<keyof GetInputs<S, k>, null | ID>
-		outputs: Record<keyof GetOutputs<S, k>, Set<ID>>
+		outputs: Record<keyof GetOutputs<S, k>, ID[]>
 	}
 }[K]
 

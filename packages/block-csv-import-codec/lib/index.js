@@ -1,8 +1,11 @@
 import * as t from "io-ts";
-export default t.type({
+export const inputs = t.type({});
+export const outputs = t.type({ output: t.array(t.number) });
+export const state = t.type({
     file: t.union([t.string, t.null]),
     key: t.string,
-    headers: t.array(t.union([
+    header: t.boolean,
+    columns: t.array(t.union([
         t.null,
         t.type({
             key: t.string,

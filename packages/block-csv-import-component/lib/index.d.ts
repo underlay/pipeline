@@ -1,1 +1,1 @@
-export declare const bar = 9;
+export default function foo({}: {}): null;

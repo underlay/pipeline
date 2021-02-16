@@ -2,7 +2,7 @@
 	"compilerOptions": {
 		"composite": true,
 		"strict": true,
-		"module": "ES6",
+		"module": "ESNext",
 		"target": "ES2020",
 		"declaration": true,
 		"alwaysStrict": true,

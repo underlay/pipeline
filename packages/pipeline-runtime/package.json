@@ -1,0 +1,23 @@
+{
+	"name": "@underlay/pipeline-runtime",
+	"version": "0.0.1",
+	"type": "module",
+	"description": "",
+	"main": "lib/index.js",
+	"types": "lib/index.d.ts",
+	"files": [
+		"lib"
+	],
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"build": "tsc"
+	},
+	"author": "Joel Gustafson",
+	"license": "GPL-3.0",
+	"devDependencies": {
+		"@underlay/apg": "^1.1.2"
+	},
+	"peerDependencies": {
+		"@underlay/apg": "1.1.2"
+	}
+}

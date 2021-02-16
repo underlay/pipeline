@@ -1,1 +1,3 @@
-export const bar = 9
+export default function foo({}) {
+	return null
+}

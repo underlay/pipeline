@@ -1,1 +1,1 @@
-export * from "@underlay/block-csv-import-runtime"
+export { default as CsvImport } from "@underlay/block-csv-import-runtime"

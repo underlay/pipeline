@@ -10,7 +10,8 @@
 		"moduleResolution": "node",
 		"esModuleInterop": true,
 		"paths": {
-			"@underlay/*": ["./packages/*/src/index.ts"]
+			"@underlay/block-*": ["./packages/block-*/src/index.ts"],
+			"@underlay/pipeline-*": ["./packages/pipeline-*/src/index.ts"]
 		}
 	}
 }

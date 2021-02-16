@@ -1,12 +1,12 @@
 import * as t from "io-ts"
 import { left, right, Either, isLeft } from "fp-ts/Either"
 
-import { Schema, Instance, getKeys } from "@underlay/apg"
-import table from "@underlay/apg-codec-table"
+import { Schema, Instance, signalInvalidType } from "@underlay/apg"
+import table, { Property, OptionalProperty } from "@underlay/apg-codec-table"
 import { ul } from "@underlay/namespaces"
 
 import { Pipe, Failure } from "@underlay/pipeline-runtime"
-import codec from "@underlay/block-csv-import-codec"
+import * as codec from "@underlay/block-csv-import-codec"
 import { encodeLiteral, decodeLiteral } from "@underlay/apg-format-binary"
 
 import { Buffer } from "buffer"
@@ -16,24 +16,18 @@ import zip from "ziterable"
 type State = typeof codec extends t.Type<infer T> ? T : never
 type Table = typeof table extends t.Type<infer T, any, any> ? T : never
 
-function signalInvalidType(type: never): never {
-	console.error(type)
-	throw new Error("Invalid type")
-}
-
-type Property = Table[string]["components"][string]
-
-const unit = Instance.unit()
+const unit = Instance.unit(Schema.unit())
 
 const pipe: Pipe<State, {}, { output: Table }> = {
-	codecs: {},
+	codec,
+	types: {},
 	validate: (state, {}) => {
 		const { key, headers, file } = state
 		if (file === null) {
 			return left({ message: "No file" })
 		}
 
-		const components: Record<string, Property> = {}
+		const components: Record<string, OptionalProperty> = {}
 		for (const header of headers) {
 			if (header !== null) {
 				const property =
@@ -67,16 +61,12 @@ const pipe: Pipe<State, {}, { output: Table }> = {
 		}
 
 		const headers: NonNullable<typeof state.headers[number]>[] = []
-		const cache = new Map<string, Instance.Uri>()
+
 		for (const header of state.headers) {
 			if (header === null) {
 				return left({ message: "Invalid header" })
 			}
 			headers.push(header)
-			const { type } = header
-			if (type.kind === "literal" && !cache.has(type.datatype)) {
-				cache.set(type.datatype, Instance.uri(type.datatype))
-			}
 		}
 
 		return new Promise((resolve) => {
@@ -96,27 +86,32 @@ const pipe: Pipe<State, {}, { output: Table }> = {
 							return resolve(left({ message: `` }))
 						}
 
-						const components: Record<string, Instance.Value<Property>> = {}
+						const components: Record<
+							string,
+							Instance.Value<OptionalProperty>
+						> = {}
 						for (const [value, { key, nullValue }] of zip(row, headers)) {
 							const property = product.components[key]
-
-							if (property.type === "coproduct") {
-								const keys = getKeys(property.options)
+							if (property.kind === "coproduct") {
 								if (value === nullValue) {
-									const none = Instance.coproduct(keys, ul.none, unit)
+									const none = Instance.coproduct(property, ul.none, unit)
 									components[key] = none
 								} else {
 									const type = property.options[ul.some]
-									const result = parseLiteral(cache, type, value)
+									const result = parsePrimitive(type, value)
 									if (isLeft(result)) {
 										return result
 									} else {
-										const some = Instance.coproduct(keys, ul.some, result.right)
+										const some = Instance.coproduct(
+											property,
+											ul.some,
+											result.right
+										)
 										components[key] = some
 									}
 								}
 							} else {
-								const result = parseLiteral(cache, property, value)
+								const result = parsePrimitive(property, value)
 								if (isLeft(result)) {
 									return result
 								} else {
@@ -124,6 +119,12 @@ const pipe: Pipe<State, {}, { output: Table }> = {
 								}
 							}
 						}
+						values.push(
+							Instance.product<Record<string, OptionalProperty>>(
+								product,
+								components
+							)
+						)
 					}
 				},
 				complete: () => {
@@ -135,24 +136,17 @@ const pipe: Pipe<State, {}, { output: Table }> = {
 	},
 }
 
-function parseLiteral(
-	cache: Map<string, Instance.Uri>,
-	type: Schema.Uri | Schema.Literal,
+function parsePrimitive(
+	type: Property,
 	value: string
-): Either<Failure, Instance.Literal | Instance.Uri> {
-	if (type.type === "uri") {
-		if (cache.has(value)) {
-			return right(cache.get(value)!)
-		} else {
-			const uri = Instance.uri(value)
-			cache.set(value, uri)
-			return right(uri)
-		}
-	} else if (type.type === "literal") {
-		const literal = Instance.literal(value, Instance.uri(type.datatype))
+): Either<Failure, Instance.Value<Property>> {
+	if (type.kind === "uri") {
+		return right(Instance.uri(type, value))
+	} else if (type.kind === "literal") {
+		const literal = Instance.literal(Schema.literal(type.datatype), value)
 		let result: string
 		try {
-			const data = Buffer.concat(Array.from(encodeLiteral(literal)))
+			const data = Buffer.concat(Array.from(encodeLiteral(type, literal)))
 			result = decodeLiteral({ data, offset: 0 }, type.datatype)
 		} catch (e) {
 			if (e instanceof Error) {
@@ -161,8 +155,7 @@ function parseLiteral(
 				throw e
 			}
 		}
-		const datatype = cache.get(type.datatype)!
-		return right(Instance.literal(result, datatype))
+		return right(Instance.literal(type, result))
 	} else {
 		signalInvalidType(type)
 	}

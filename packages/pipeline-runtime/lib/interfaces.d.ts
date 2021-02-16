@@ -1,4 +1,5 @@
 import * as t from "io-ts";
+import { Either } from "fp-ts/Either";
 import { Schema, Instance } from "@underlay/apg";
 export declare type ID = number;
 export declare type Schema = Record<string, {
@@ -9,16 +10,19 @@ export declare type Schema = Record<string, {
 export declare type GetState<S extends Schema, K extends keyof S> = S[K]["state"];
 export declare type GetInputs<S extends Schema, K extends keyof S> = S[K]["inputs"];
 export declare type GetOutputs<S extends Schema, K extends keyof S> = S[K]["outputs"];
+export declare type Failure = {
+    message: string;
+};
 export declare type Pipe<State, Inputs extends Record<string, Schema.Schema>, Outputs extends Record<string, Schema.Schema>> = {
     codecs: {
         [i in keyof Inputs]: t.Type<Inputs[i]>;
     };
-    validate: (state: State, inputs: Inputs) => Outputs;
-    evaluate: (state: State, inputs: {
+    validate: (state: State, inputSchemas: Inputs) => Either<Failure, Outputs>;
+    evaluate: (state: State, inputSchemas: Inputs, inputInstances: {
         [i in keyof Inputs]: Instance.Instance<Inputs[i]>;
-    }) => Promise<{
+    }, outputSchemas: Outputs) => Promise<Either<Failure, {
         [o in keyof Outputs]: Instance.Instance<Outputs[o]>;
-    }>;
+    }>>;
 };
 export declare type Pipeline<S extends Schema> = {
     [k in keyof S]: Pipe<GetState<S, k>, GetInputs<S, k>, GetOutputs<S, k>>;

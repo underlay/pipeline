@@ -3,8 +3,6 @@ import { Either } from "fp-ts/Either"
 
 import { Schema, Instance } from "@underlay/apg"
 
-export type ID = number
-
 export type Schema = Record<
 	string,
 	{
@@ -25,7 +23,12 @@ export type Pipe<
 	Inputs extends Record<string, Schema.Schema>,
 	Outputs extends Record<string, Schema.Schema>
 > = {
-	codecs: { [i in keyof Inputs]: t.Type<Inputs[i]> }
+	codec: {
+		state: t.Type<State>
+		inputs: t.Type<Record<keyof Inputs, null>>
+		outputs: t.Type<Record<keyof Outputs, null>>
+	}
+	types: { [i in keyof Inputs]: t.Type<Inputs[i]> }
 	validate: (state: State, inputSchemas: Inputs) => Either<Failure, Outputs>
 	evaluate: (
 		state: State,
@@ -38,8 +41,12 @@ export type Pipe<
 }
 
 export type Pipeline<S extends Schema> = {
-	[k in keyof S]: Pipe<GetState<S, k>, GetInputs<S, k>, GetOutputs<S, k>>
+	[k in keyof S]: Pipe<GetState<S, k>, GetInputs<S, k>, GetOutputs<S, k>> & {
+		nodeCodec: t.Type<Node<S, k>>
+	}
 }
+
+export type ID = number
 
 export type Node<S extends Schema, K extends keyof S = keyof S> = {
 	id: number

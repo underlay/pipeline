@@ -15,9 +15,13 @@
 	"author": "Joel Gustafson",
 	"license": "GPL-3.0",
 	"devDependencies": {
-		"@underlay/apg": "^1.1.2"
+		"@underlay/apg": "^1.1.2",
+		"fp-ts": "^2.9.5",
+		"io-ts": "^2.2.14"
 	},
 	"peerDependencies": {
-		"@underlay/apg": "1.1.2"
+		"@underlay/apg": "1.1.2",
+		"fp-ts": "^2.9.5",
+		"io-ts": "^2.2.14"
 	}
 }

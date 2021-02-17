@@ -1,0 +1,20 @@
+{
+	"name": "@underlay/block-collection-export-component",
+	"version": "0.0.3",
+	"publishConfig": {
+		"access": "public"
+	},
+	"type": "module",
+	"description": "",
+	"main": "lib/index.js",
+	"types": "lib/index.d.ts",
+	"file": [
+		"lib"
+	],
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"build": "tsc"
+	},
+	"author": "Joel Gustafson",
+	"license": "GPL-3.0"
+}

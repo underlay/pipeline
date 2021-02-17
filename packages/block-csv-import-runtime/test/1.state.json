@@ -4,13 +4,13 @@
 	"header": false,
 	"columns": [
 		{
-			"key": "http://example.com/name",
+			"key": "http://example.com/foo",
 			"nullValue": null,
 			"type": { "kind": "uri" }
 		},
 		null,
 		{
-			"key": "http://example.com/name",
+			"key": "http://example.com/bar",
 			"nullValue": null,
 			"type": {
 				"kind": "literal",

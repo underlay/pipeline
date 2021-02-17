@@ -1,6 +1,6 @@
 {
 	"name": "@underlay/pipeline-block-runtimes",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"type": "module",
 	"description": "",
 	"files": [],
@@ -11,6 +11,6 @@
 	"author": "Joel Gustafson",
 	"license": "GPL-3.0",
 	"dependencies": {
-		"@underlay/block-csv-import-runtime": "^0.0.1"
+		"@underlay/block-csv-import-runtime": "^0.0.2"
 	}
 }

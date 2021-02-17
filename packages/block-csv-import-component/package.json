@@ -1,6 +1,6 @@
 {
 	"name": "@underlay/block-csv-import-component",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"type": "module",
 	"description": "",
 	"main": "lib/index.js",
@@ -15,7 +15,7 @@
 	"author": "Joel Gustafson",
 	"license": "GPL-3.0",
 	"dependencies": {
-		"@underlay/block-csv-import-codec": "^0.0.1"
+		"@underlay/block-csv-import-codec": "^0.0.2"
 	},
 	"devDependencies": {
 		"react": "^17.0.1"

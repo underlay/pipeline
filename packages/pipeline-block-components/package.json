@@ -1,6 +1,6 @@
 {
 	"name": "@underlay/pipeline-block-components",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"type": "module",
 	"description": "",
 	"main": "lib/index.js",
@@ -15,6 +15,6 @@
 	"author": "Joel Gustafson",
 	"license": "GPL-3.0",
 	"dependencies": {
-		"@underlay/block-csv-import-component": "^0.0.1"
+		"@underlay/block-csv-import-component": "^0.0.2"
 	}
 }

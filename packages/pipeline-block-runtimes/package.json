@@ -14,6 +14,7 @@
 	"author": "Joel Gustafson",
 	"license": "GPL-3.0",
 	"dependencies": {
+		"@underlay/block-collection-export-runtime": "^0.0.4",
 		"@underlay/block-csv-import-runtime": "^0.0.4"
 	},
 	"gitHead": "8557ebceec437d1053e88231ddfedd550f7fbbbc"

@@ -1,1 +1,1 @@
-export default function foo({}: {}): null;
+export default function Component({}: {}): null;

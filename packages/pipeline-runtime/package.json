@@ -25,6 +25,6 @@
 		"io-ts": "^2.2.14"
 	},
 	"dependencies": {
-		"@underlay/apg-schema-schema": "^1.1.2"
+		"@underlay/apg-schema-schema": "^1.2.0"
 	}
 }

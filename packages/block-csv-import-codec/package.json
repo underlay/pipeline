@@ -1,9 +1,9 @@
 {
 	"name": "@underlay/block-csv-import-codec",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"publishConfig": {
-    "access": "public"
-  },
+		"access": "public"
+	},
 	"type": "module",
 	"description": "",
 	"main": "lib/index.js",

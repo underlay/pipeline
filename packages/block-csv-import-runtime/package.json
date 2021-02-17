@@ -14,7 +14,7 @@
 	"license": "GPL-3.0",
 	"dependencies": {
 		"@underlay/apg-codec-table": "^1.2.0",
-		"@underlay/apg-format-binary": "^1.2.0",
+		"@underlay/apg-format-binary": "^1.2.1",
 		"@underlay/block-csv-import-codec": "^0.0.1",
 		"@underlay/namespaces": "^0.0.2",
 		"buffer": "^6.0.3",

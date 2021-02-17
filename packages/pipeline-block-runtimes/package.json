@@ -1,6 +1,6 @@
 {
 	"name": "@underlay/pipeline-block-runtimes",
-	"version": "0.0.4",
+	"version": "0.0.5",
 	"publishConfig": {
 		"access": "public"
 	},
@@ -14,8 +14,8 @@
 	"author": "Joel Gustafson",
 	"license": "GPL-3.0",
 	"dependencies": {
-		"@underlay/block-collection-export-runtime": "^0.0.4",
-		"@underlay/block-csv-import-runtime": "^0.0.4"
+		"@underlay/block-collection-export-runtime": "^0.0.5",
+		"@underlay/block-csv-import-runtime": "^0.0.5"
 	},
 	"gitHead": "8557ebceec437d1053e88231ddfedd550f7fbbbc"
 }

@@ -18,9 +18,11 @@
 		"@underlay/block-csv-import-codec": "^0.0.1",
 		"@underlay/namespaces": "^0.0.2",
 		"buffer": "^6.0.3",
+		"node-fetch": "^2.6.1",
 		"papaparse": "^5.3.0"
 	},
 	"devDependencies": {
+		"@types/node-fetch": "^2.5.8",
 		"@types/papaparse": "^5.2.5",
 		"@underlay/apg": "^1.2.0",
 		"@underlay/pipeline-runtime": "^0.0.1",

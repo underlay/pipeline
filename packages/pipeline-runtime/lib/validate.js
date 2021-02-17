@@ -27,7 +27,7 @@ export function readValidateInputs(codec, types, paths) {
     if (codec.is(state) === false) {
         throw new Error("Invalid state value");
     }
-    const filePattern = /^(\w+)=(\w+)$/;
+    const filePattern = /^([\w\-\.]+)=([\w\-\.]+)$/;
     const inputSchemas = {};
     const inputSchemaValues = flags["input-schemas"];
     if (inputSchemaValues !== undefined) {

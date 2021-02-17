@@ -12,6 +12,7 @@ import { encodeLiteral, decodeLiteral } from "@underlay/apg-format-binary"
 
 import { Buffer } from "buffer"
 import Papa from "papaparse"
+import fetch from "node-fetch"
 
 import { types, paths, validate } from "./utils.js"
 
@@ -40,71 +41,66 @@ if (product === undefined) {
 	throw new Error("Invalid class key")
 }
 
-const columns: NonNullable<typeof state.columns[number]>[] = []
-
-for (const column of state.columns) {
-	if (column === null) {
-		throw new Error("Invalid header")
-	}
-	columns.push(column)
-}
-
 const values: Instance.Value<codec.Outputs["output"][string]>[] = []
 let skip = state.header
 
-Papa.parse<string[]>(file, {
-	skipEmptyLines: true,
-	header: false,
-	download: true,
-	step: ({ errors, data }, parser) => {
-		if (errors.length > 0) {
-			parser.abort()
-			throw new Error(formatErrors(errors))
+const config = { skipEmptyLines: true, header: false }
+const stream = Papa.parse(Papa.NODE_STREAM_INPUT, config)
+
+stream.on("data", (row: string[]) => {
+	if (row.length !== state.columns.length) {
+		stream.end()
+		throw new Error("Bad row length")
+	} else if (skip) {
+		skip = false
+		return
+	}
+
+	const components: Record<string, Instance.Value<OptionalProperty>> = {}
+	for (const [value, column] of zip(row, state.columns)) {
+		if (column === null) {
+			continue
 		}
 
-		for (const row of data) {
-			if (row.length !== columns.length) {
-				parser.abort()
-				throw new Error("Bad row length")
-			} else if (skip) {
-				skip = false
-				continue
+		const { key, nullValue } = column
+		const property = product.components[key]
+		if (property.kind === "coproduct") {
+			if (value === nullValue) {
+				const none = Instance.coproduct(property, ul.none, unit)
+				components[key] = none
+			} else {
+				const type = property.options[ul.some]
+				components[key] = Instance.coproduct(
+					property,
+					ul.some,
+					parseProperty(type, value)
+				)
 			}
-
-			const components: Record<string, Instance.Value<OptionalProperty>> = {}
-			for (const [value, { key, nullValue }] of zip(row, columns)) {
-				const property = product.components[key]
-				if (property.kind === "coproduct") {
-					if (value === nullValue) {
-						const none = Instance.coproduct(property, ul.none, unit)
-						components[key] = none
-					} else {
-						const type = property.options[ul.some]
-						components[key] = Instance.coproduct(
-							property,
-							ul.some,
-							parseProperty(type, value)
-						)
-					}
-				} else {
-					components[key] = parseProperty(property, value)
-				}
+		} else {
+			try {
+				components[key] = parseProperty(property, value)
+			} catch (e) {
+				stream.end()
+				throw e
 			}
-			values.push(
-				Instance.product<Record<string, OptionalProperty>>(product, components)
-			)
 		}
-	},
-	complete: () => {
-		const instance = Instance.instance(output, { [state.key]: values })
-		writeEvaluateOutputs<codec.Outputs>(
-			outputSchemaPaths,
-			{ output },
-			outputInstancePaths,
-			{ output: instance }
-		)
-	},
+	}
+	values.push(
+		Instance.product<Record<string, OptionalProperty>>(product, components)
+	)
 })
+
+stream.on("end", () => {
+	const instance = Instance.instance(output, { [state.key]: values })
+	writeEvaluateOutputs<codec.Outputs>(
+		outputSchemaPaths,
+		{ output },
+		outputInstancePaths,
+		{ output: instance }
+	)
+})
+
+fetch(file).then((res) => res.body.pipe(stream))
 
 function parseProperty(
 	type: Property,
@@ -121,9 +117,3 @@ function parseProperty(
 		signalInvalidType(type)
 	}
 }
-
-const formatError = (error: Papa.ParseError) =>
-	`${error.type} ${error.code} in row ${error.row}: ${error.message}`
-
-const formatErrors = (errors: Papa.ParseError[]) =>
-	errors.map(formatError).join("\n")

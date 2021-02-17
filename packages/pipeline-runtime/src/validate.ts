@@ -55,7 +55,7 @@ export function readValidateInputs<
 		throw new Error("Invalid state value")
 	}
 
-	const filePattern = /^(\w+)=(\w+)$/
+	const filePattern = /^([\w\-\.]+)=([\w\-\.]+)$/
 
 	const inputSchemas: Record<string, Schema.Schema> = {}
 	const inputSchemaValues = flags["input-schemas"]

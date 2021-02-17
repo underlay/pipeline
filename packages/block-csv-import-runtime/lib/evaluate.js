@@ -5,6 +5,7 @@ import * as codec from "@underlay/block-csv-import-codec";
 import { encodeLiteral, decodeLiteral } from "@underlay/apg-format-binary";
 import { Buffer } from "buffer";
 import Papa from "papaparse";
+import fetch from "node-fetch";
 import { types, paths, validate } from "./utils.js";
 const { state, inputSchemas, outputSchemaPaths, outputInstancePaths, } = readEvaluateInputs(codec.state, types, paths);
 const { output } = validate(state, inputSchemas);
@@ -17,58 +18,53 @@ const product = output[state.key];
 if (product === undefined) {
     throw new Error("Invalid class key");
 }
-const columns = [];
-for (const column of state.columns) {
-    if (column === null) {
-        throw new Error("Invalid header");
-    }
-    columns.push(column);
-}
 const values = [];
 let skip = state.header;
-Papa.parse(file, {
-    skipEmptyLines: true,
-    header: false,
-    download: true,
-    step: ({ errors, data }, parser) => {
-        if (errors.length > 0) {
-            parser.abort();
-            throw new Error(formatErrors(errors));
+const config = { skipEmptyLines: true, header: false };
+const stream = Papa.parse(Papa.NODE_STREAM_INPUT, config);
+stream.on("data", (row) => {
+    if (row.length !== state.columns.length) {
+        stream.end();
+        throw new Error("Bad row length");
+    }
+    else if (skip) {
+        skip = false;
+        return;
+    }
+    const components = {};
+    for (const [value, column] of zip(row, state.columns)) {
+        if (column === null) {
+            continue;
         }
-        for (const row of data) {
-            if (row.length !== columns.length) {
-                parser.abort();
-                throw new Error("Bad row length");
+        const { key, nullValue } = column;
+        const property = product.components[key];
+        if (property.kind === "coproduct") {
+            if (value === nullValue) {
+                const none = Instance.coproduct(property, ul.none, unit);
+                components[key] = none;
             }
-            else if (skip) {
-                skip = false;
-                continue;
+            else {
+                const type = property.options[ul.some];
+                components[key] = Instance.coproduct(property, ul.some, parseProperty(type, value));
             }
-            const components = {};
-            for (const [value, { key, nullValue }] of zip(row, columns)) {
-                const property = product.components[key];
-                if (property.kind === "coproduct") {
-                    if (value === nullValue) {
-                        const none = Instance.coproduct(property, ul.none, unit);
-                        components[key] = none;
-                    }
-                    else {
-                        const type = property.options[ul.some];
-                        components[key] = Instance.coproduct(property, ul.some, parseProperty(type, value));
-                    }
-                }
-                else {
-                    components[key] = parseProperty(property, value);
-                }
-            }
-            values.push(Instance.product(product, components));
         }
-    },
-    complete: () => {
-        const instance = Instance.instance(output, { [state.key]: values });
-        writeEvaluateOutputs(outputSchemaPaths, { output }, outputInstancePaths, { output: instance });
-    },
+        else {
+            try {
+                components[key] = parseProperty(property, value);
+            }
+            catch (e) {
+                stream.end();
+                throw e;
+            }
+        }
+    }
+    values.push(Instance.product(product, components));
 });
+stream.on("end", () => {
+    const instance = Instance.instance(output, { [state.key]: values });
+    writeEvaluateOutputs(outputSchemaPaths, { output }, outputInstancePaths, { output: instance });
+});
+fetch(file).then((res) => res.body.pipe(stream));
 function parseProperty(type, value) {
     if (type.kind === "uri") {
         return Instance.uri(type, value);
@@ -83,5 +79,3 @@ function parseProperty(type, value) {
         signalInvalidType(type);
     }
 }
-const formatError = (error) => `${error.type} ${error.code} in row ${error.row}: ${error.message}`;
-const formatErrors = (errors) => errors.map(formatError).join("\n");

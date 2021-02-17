@@ -1,6 +1,9 @@
 {
 	"name": "@underlay/pipeline-block-components",
 	"version": "0.0.2",
+	"publishConfig": {
+		"access": "public"
+	},
 	"type": "module",
 	"description": "",
 	"main": "lib/index.js",
@@ -16,5 +19,6 @@
 	"license": "GPL-3.0",
 	"dependencies": {
 		"@underlay/block-csv-import-component": "^0.0.2"
-	}
+	},
+	"gitHead": "8557ebceec437d1053e88231ddfedd550f7fbbbc"
 }

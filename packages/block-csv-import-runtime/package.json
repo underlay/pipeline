@@ -1,6 +1,9 @@
 {
 	"name": "@underlay/block-csv-import-runtime",
 	"version": "0.0.2",
+	"publishConfig": {
+		"access": "public"
+	},
 	"type": "module",
 	"description": "",
 	"files": [
@@ -34,5 +37,6 @@
 		"@underlay/pipeline-runtime": "^0.0.1",
 		"fp-ts": "^2.9.5",
 		"io-ts": "^2.2.14"
-	}
+	},
+	"gitHead": "8557ebceec437d1053e88231ddfedd550f7fbbbc"
 }

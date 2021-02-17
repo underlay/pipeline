@@ -1,6 +1,9 @@
 {
 	"name": "@underlay/pipeline-block-runtimes",
 	"version": "0.0.2",
+	"publishConfig": {
+		"access": "public"
+	},
 	"type": "module",
 	"description": "",
 	"files": [],
@@ -12,5 +15,6 @@
 	"license": "GPL-3.0",
 	"dependencies": {
 		"@underlay/block-csv-import-runtime": "^0.0.2"
-	}
+	},
+	"gitHead": "8557ebceec437d1053e88231ddfedd550f7fbbbc"
 }

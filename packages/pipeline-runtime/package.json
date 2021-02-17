@@ -1,6 +1,9 @@
 {
 	"name": "@underlay/pipeline-runtime",
 	"version": "0.0.2",
+	"publishConfig": {
+		"access": "public"
+	},
 	"type": "module",
 	"description": "",
 	"main": "lib/index.js",
@@ -26,5 +29,6 @@
 	},
 	"dependencies": {
 		"@underlay/apg-schema-schema": "^1.2.0"
-	}
+	},
+	"gitHead": "8557ebceec437d1053e88231ddfedd550f7fbbbc"
 }

@@ -1,6 +1,9 @@
 {
 	"name": "@underlay/block-csv-import-codec",
 	"version": "0.0.2",
+	"publishConfig": {
+    "access": "public"
+  },
 	"type": "module",
 	"description": "",
 	"main": "lib/index.js",
@@ -24,5 +27,6 @@
 	},
 	"dependencies": {
 		"@underlay/apg-codec-table": "^1.2.0"
-	}
+	},
+	"gitHead": "8557ebceec437d1053e88231ddfedd550f7fbbbc"
 }

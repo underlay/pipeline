@@ -1,6 +1,6 @@
 {
 	"name": "@underlay/block-csv-import-codec",
-	"version": "0.0.3",
+	"version": "0.0.4",
 	"publishConfig": {
 		"access": "public"
 	},

@@ -1,13 +1,15 @@
 // node ./lib/evaluate.js
 //    --state state-file.json
-//    --input-schemas foo=bar.schema bar=bax.jkfslda ...
-//		--input-instances foo= ...
-//    --output-schemas bar=output.schema ...
-//    --output-instances output=foo.instance ...
+//    --input-schemas foo=foo.schema ...
+//		--input-instances foo=foo.instance ...
+//    --output-schemas bar=bar.schema ...
+//    --output-instances bar=bar.instance ...
 import { readFileSync, writeFileSync } from "fs";
+import { isLeft } from "fp-ts/lib/Either.js";
 import { encode, decode } from "@underlay/apg-format-binary";
 import schemaSchema, { toSchema, fromSchema, } from "@underlay/apg-schema-schema";
-export function readEvaluateInputs(codec, types, paths) {
+import { filePattern, formatErrors, validateInputInstances, validateInputPaths, validateInputSchemas, validateOutputPaths, } from "./utils.js";
+export function readEvaluateInputs(codec) {
     const flags = {};
     let current = [];
     for (const arg of process.argv.slice(2)) {
@@ -20,19 +22,17 @@ export function readEvaluateInputs(codec, types, paths) {
             current.push(arg);
         }
     }
-    let state;
     const stateValues = flags["state"];
-    if (stateValues !== undefined && stateValues.length === 1) {
-        const [path] = stateValues;
-        state = JSON.parse(readFileSync(path, "utf-8"));
+    if (stateValues === undefined || stateValues.length !== 1) {
+        throw new Error("Invalid --state parameter");
     }
-    else {
-        throw new Error("Invalid --state flag");
+    const [statePath] = stateValues;
+    const result = codec.state.decode(JSON.parse(readFileSync(statePath, "utf-8")));
+    if (isLeft(result)) {
+        throw new Error(`Invalid state value:\n${formatErrors(result.left)}\n`);
     }
-    if (codec.is(state) === false) {
-        throw new Error("Invalid state value");
-    }
-    const filePattern = /^([\w\-\.]+)=([\w\-\.]+)$/;
+    const state = result.right;
+    const inputSchemaPaths = {};
     const inputSchemas = {};
     const inputSchemaValues = flags["input-schemas"];
     if (inputSchemaValues !== undefined) {
@@ -40,6 +40,7 @@ export function readEvaluateInputs(codec, types, paths) {
             const match = filePattern.exec(value);
             if (match !== null) {
                 const [_, input, path] = match;
+                inputSchemaPaths[input] = path;
                 const file = readFileSync(path);
                 const instance = decode(schemaSchema, file);
                 inputSchemas[input] = toSchema(instance);
@@ -50,11 +51,15 @@ export function readEvaluateInputs(codec, types, paths) {
         }
     }
     else {
-        throw new Error("Invalid --input-schemas flag");
+        throw new Error("Invalid --input-schemas parameter");
     }
-    if (!validateInputSchemas(types, inputSchemas)) {
+    if (!validateInputPaths(codec, inputSchemaPaths)) {
+        throw new Error("Invalid input schema paths");
+    }
+    else if (!validateInputSchemas(codec, inputSchemas)) {
         throw new Error("Invalid input schemas");
     }
+    const inputInstancePaths = {};
     const inputInstances = {};
     const inputInstanceValues = flags["input-instances"];
     if (inputInstanceValues !== undefined) {
@@ -62,6 +67,7 @@ export function readEvaluateInputs(codec, types, paths) {
             const match = filePattern.exec(value);
             if (match !== null) {
                 const [_, input, path] = match;
+                inputInstancePaths[input] = path;
                 const file = readFileSync(path);
                 const instance = decodeInputInstance(inputSchemas, input, file);
                 inputInstances[input] = instance;
@@ -72,9 +78,12 @@ export function readEvaluateInputs(codec, types, paths) {
         }
     }
     else {
-        throw new Error("Invalid --input-schemas flag");
+        throw new Error("Invalid --input-schemas parameter");
     }
-    if (!validateInputInstances(inputSchemas, inputInstances)) {
+    if (!validateInputPaths(codec, inputInstancePaths)) {
+        throw new Error("Invalid input instance paths");
+    }
+    else if (!validateInputInstances(inputSchemas, inputInstances)) {
         throw new Error("Invalid input instances");
     }
     const outputSchemaPaths = {};
@@ -92,7 +101,7 @@ export function readEvaluateInputs(codec, types, paths) {
         }
     }
     else {
-        throw new Error("Invalid --output-schemas flag");
+        throw new Error("Invalid --output-schemas parameter");
     }
     const outputInstancePaths = {};
     const outputInstancePathValues = flags["output-instances"];
@@ -109,24 +118,27 @@ export function readEvaluateInputs(codec, types, paths) {
         }
     }
     else {
-        throw new Error("Invalid --output-schemas flag");
+        throw new Error("Invalid --output-schemas paramter");
     }
-    if (paths.is(outputSchemaPaths) && paths.is(outputInstancePaths)) {
+    if (!validateOutputPaths(codec, outputSchemaPaths)) {
+        throw new Error("Invalid output schema paths");
+    }
+    else if (!validateOutputPaths(codec, outputInstancePaths)) {
+        throw new Error("Invalid output instance paths");
+    }
+    else {
         return {
             state,
+            inputSchemaPaths,
             inputSchemas,
+            inputInstancePaths,
             inputInstances,
             outputSchemaPaths,
             outputInstancePaths,
         };
     }
-    else {
-        throw new Error("Invalid output paths");
-    }
 }
 const decodeInputInstance = (inputSchemas, key, file) => decode(inputSchemas[key], file);
-const validateInputSchemas = (types, inputs) => Object.keys(types).every((key) => types[key].is(inputs[key]));
-const validateInputInstances = (inputSchemas, inputInstances) => Object.keys(inputSchemas).every((key) => key in inputInstances);
 export function writeEvaluateOutputs(outputSchemaPaths, outputSchemas, outputInstancePaths, outputInstances) {
     for (const key of Object.keys(outputSchemas)) {
         const path = outputSchemaPaths[key];

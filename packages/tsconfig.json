@@ -1,13 +1,8 @@
 {
 	"files": [],
 	"references": [
-		{ "path": "./pipeline-runtime" },
-		{ "path": "./pipeline-block-components" },
-		{ "path": "./block-collection-export-codec" },
-		{ "path": "./block-collection-export-component" },
-		{ "path": "./block-collection-export-runtime" },
-		{ "path": "./block-csv-import-codec" },
-		{ "path": "./block-csv-import-component" },
-		{ "path": "./block-csv-import-runtime" }
+		{ "path": "./pipeline-codecs" },
+		{ "path": "./pipeline-editor" },
+		{ "path": "./pipeline-runtime" }
 	]
 }

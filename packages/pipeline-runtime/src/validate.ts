@@ -1,8 +1,10 @@
-// node ./lib/evaluate.js --state state-file.json --input-schemas foo=bar.schema --output-schemas bar=output.schema
+// node ./lib/validate.js
+//	--state state-file.json
+//	--input-schemas foo=bar.schema ...
+//	--output-schemas bar=output.schema ...
 
 import { readFileSync, writeFileSync } from "fs"
-
-import * as t from "io-ts"
+import { isLeft } from "fp-ts/lib/Either.js"
 import { Schema } from "@underlay/apg"
 import { encode, decode } from "@underlay/apg-format-binary"
 import schemaSchema, {
@@ -11,25 +13,34 @@ import schemaSchema, {
 	SchemaSchema,
 } from "@underlay/apg-schema-schema"
 
-export interface ValidateFlags<
+import { Codec, Paths, Schemas } from "@underlay/pipeline-codecs"
+
+import {
+	filePattern,
+	formatErrors,
+	validateInputPaths,
+	validateInputSchemas,
+	validateOutputPaths,
+} from "./utils.js"
+
+export interface ValidateParams<
 	State,
-	Inputs extends Record<string, Schema.Schema>,
-	Outputs extends Record<string, Schema.Schema>
+	Inputs extends Schemas,
+	Outputs extends Schemas
 > {
 	state: State
+	inputSchemaPaths: Record<keyof Inputs, string>
 	inputSchemas: Inputs
 	outputSchemaPaths: Record<keyof Outputs, string>
 }
 
 export function readValidateInputs<
 	State,
-	Inputs extends Record<string, Schema.Schema>,
-	Outputs extends Record<string, Schema.Schema>
+	Inputs extends Schemas,
+	Outputs extends Schemas
 >(
-	codec: t.Type<State>,
-	types: { [i in keyof Inputs]: t.Type<Inputs[i]> },
-	paths: t.Type<Record<keyof Outputs, string>>
-): ValidateFlags<State, Inputs, Outputs> {
+	codec: Codec<State, Inputs, Outputs>
+): ValidateParams<State, Inputs, Outputs> {
 	const flags: Record<string, string[]> = {}
 	let current: string[] = []
 	for (const arg of process.argv.slice(2)) {
@@ -42,28 +53,33 @@ export function readValidateInputs<
 		}
 	}
 
-	let state
 	const stateValues = flags["state"]
-	if (stateValues !== undefined && stateValues.length === 1) {
-		const [path] = stateValues
-		state = JSON.parse(readFileSync(path, "utf-8"))
-	} else {
-		throw new Error("Invalid --state flag")
+	if (stateValues === undefined || stateValues.length !== 1) {
+		throw new Error("Invalid --state parameter")
 	}
 
-	if (codec.is(state) === false) {
-		throw new Error("Invalid state value")
+	const [statePath] = stateValues
+	const stateResult = codec.state.decode(
+		JSON.parse(readFileSync(statePath, "utf-8"))
+	)
+
+	if (isLeft(stateResult)) {
+		throw new Error(`Invalid state value:\n${formatErrors(stateResult.left)}\n`)
 	}
 
-	const filePattern = /^([\w\-\.]+)=([\w\-\.]+)$/
+	const state = stateResult.right
 
+	const inputSchemaPaths: Paths = {}
 	const inputSchemas: Record<string, Schema.Schema> = {}
 	const inputSchemaValues = flags["input-schemas"]
-	if (inputSchemaValues !== undefined) {
+	if (inputSchemaValues === undefined) {
+		throw new Error("Missing --input-schemas parameter")
+	} else if (inputSchemaValues !== undefined) {
 		for (const value of inputSchemaValues) {
 			const match = filePattern.exec(value)
 			if (match !== null) {
 				const [_, input, path] = match
+				inputSchemaPaths[input] = path
 				const file = readFileSync(path)
 				const instance = decode<SchemaSchema>(schemaSchema, file)
 				inputSchemas[input] = toSchema(instance)
@@ -71,13 +87,19 @@ export function readValidateInputs<
 				throw new Error("Invalid input schema value")
 			}
 		}
-	} else {
-		throw new Error("Invalid --input-schemas flag")
+	}
+
+	if (!validateInputPaths(codec, inputSchemaPaths)) {
+		throw new Error("Invalid input schema paths")
+	} else if (!validateInputSchemas(codec, inputSchemas)) {
+		throw new Error("Invalid input schemas")
 	}
 
 	const outputSchemaPaths: Record<string, string> = {}
 	const outputSchemaPathValues = flags["output-schemas"]
-	if (outputSchemaPathValues !== undefined) {
+	if (outputSchemaPathValues === undefined) {
+		throw new Error("Invalid --output-schemas parameter")
+	} else {
 		for (const value of outputSchemaPathValues) {
 			const match = filePattern.exec(value)
 			if (match !== null) {
@@ -87,30 +109,19 @@ export function readValidateInputs<
 				throw new Error("Invalid output schema value")
 			}
 		}
-	} else {
-		throw new Error("Invalid --output-schemas flag")
 	}
 
-	if (validateInputs(types, inputSchemas) && paths.is(outputSchemaPaths)) {
-		return {
-			state,
-			inputSchemas: inputSchemas,
-			outputSchemaPaths,
-		}
+	if (!validateOutputPaths(codec, outputSchemaPaths)) {
+		throw new Error("Invalid output schema paths")
 	} else {
-		throw new Error("Invalid I/O configuration")
+		return { state, inputSchemaPaths, inputSchemas, outputSchemaPaths }
 	}
 }
 
-const validateInputs = <Inputs extends Record<string, Schema.Schema>>(
-	types: { [i in keyof Inputs]: t.Type<Inputs[i]> },
-	inputs: Record<string, Schema.Schema>
-): inputs is Inputs =>
-	Object.keys(types).every((key) => types[key].is(inputs[key]))
-
-export function writeValidateOutputs<
-	Outputs extends Record<string, Schema.Schema>
->(outputSchemaPaths: Record<keyof Outputs, string>, outputSchemas: Outputs) {
+export function writeValidateOutputs<Outputs extends Schemas>(
+	outputSchemaPaths: Record<keyof Outputs, string>,
+	outputSchemas: Outputs
+) {
 	for (const key of Object.keys(outputSchemas)) {
 		const path = outputSchemaPaths[key]
 		const instance = fromSchema(outputSchemas[key])

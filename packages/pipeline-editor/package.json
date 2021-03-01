@@ -1,6 +1,6 @@
 {
 	"name": "@underlay/pipeline-editor",
-	"version": "0.0.5",
+	"version": "0.1.0",
 	"publishConfig": {
 		"access": "public"
 	},
@@ -31,7 +31,7 @@
 		"react": "17.0.1"
 	},
 	"dependencies": {
-		"@underlay/pipeline-codecs": "^0.0.5"
+		"@underlay/pipeline-codecs": "^0.1.0"
 	},
 	"gitHead": "8557ebceec437d1053e88231ddfedd550f7fbbbc"
 }

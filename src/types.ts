@@ -47,11 +47,11 @@ export type Evaluate<State, Inputs extends Schemas, Outputs extends Schemas> = (
 
 // "start" is the start state; one start event is sent for every execution.
 // Transitions:
-// start -> block
+// start -> result
 // start -> failure
-// block -> block
-// block -> failure
-// block -> success
+// result -> result
+// result -> failure
+// result -> success
 // Every evaluate terminates in either a success of failure event.
 
 export type EvaluateEventStart = t.TypeOf<typeof evaluateEventStart>

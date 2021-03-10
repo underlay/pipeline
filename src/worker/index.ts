@@ -16,7 +16,7 @@ console.log("root directory", rootDirectory)
 const kafka = new Kafka({ brokers: ["localhost:9092"] })
 
 const producer = kafka.producer()
-const consumer = kafka.consumer({ groupId: "evaluate-runtime" })
+const consumer = kafka.consumer({ groupId: "pipeline-evaluate-runtime" })
 
 await producer.connect()
 await consumer.connect()

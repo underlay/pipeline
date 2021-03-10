@@ -1,8 +1,0 @@
-{
-	"files": [],
-	"references": [
-		{ "path": "./pipeline-codecs" },
-		{ "path": "./pipeline-editor" },
-		{ "path": "./pipeline-runtime" }
-	]
-}

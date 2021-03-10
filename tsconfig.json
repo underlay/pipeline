@@ -1,4 +1,16 @@
 {
-	"files": [],
-	"references": [{ "path": "./packages" }]
+	"include": ["src"],
+	"exclude": ["packages"],
+	"compilerOptions": {
+		"rootDir": "./src",
+		"outDir": "./lib",
+		"strict": true,
+		"module": "ESNext",
+		"target": "ES2020",
+		"declaration": true,
+		"alwaysStrict": true,
+		"jsx": "react",
+		"moduleResolution": "node",
+		"esModuleInterop": true
+	}
 }

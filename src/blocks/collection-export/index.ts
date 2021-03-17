@@ -15,7 +15,8 @@ const codec: Block<State, Inputs, Outputs> = {
 	state: t.type({ host: t.string, id: t.string }),
 	inputs: { input: schema },
 	outputs: {},
-	validate(state, { input }) {
+	initialValue: { host: "hello", id: "world" },
+	async validate(state, { input }) {
 		return {}
 	},
 }

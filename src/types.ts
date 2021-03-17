@@ -9,32 +9,70 @@ export type Schemas = Record<string, Schema.Schema>
 export type Instances = Record<string, Instance.Instance>
 export type Paths = Record<string, string>
 
-export type SchemaCodec<S extends Schema.Schema> = t.Type<S, S, Schema.Schema>
+export type Codec<S extends Schema.Schema> = t.Type<S, S, Schema.Schema>
 
 export interface Block<State, Inputs extends Schemas, Outputs extends Schemas> {
 	state: t.Type<State>
-	inputs: { [i in keyof Inputs]: SchemaCodec<Inputs[i]> }
+	inputs: { [i in keyof Inputs]: Codec<Inputs[i]> }
 	outputs: {
-		[o in keyof Outputs]: SchemaCodec<Outputs[o]>
+		[o in keyof Outputs]: Codec<Outputs[o]>
 	}
+	initialValue: State
 	validate: Validate<State, Inputs, Outputs>
 }
 
-export const schema: SchemaCodec<Schema.Schema> = new t.Type<
+export const schema: Codec<Schema.Schema> = new t.Type<
 	Schema.Schema,
 	Schema.Schema,
 	Schema.Schema
 >("schema", apg.is, t.success, t.identity)
 
-export type Validate<State, Inputs, Outputs> = (
+export type Validate<State, Inputs extends Schemas, Outputs extends Schemas> = (
 	state: State,
 	schemas: Inputs
-) => Outputs
+) => Promise<Outputs>
 
-export type Editor<State> = React.FC<{
-	state: State
-	setState: (state: State) => void
-}>
+export type ValidateError = GraphError | NodeError | EdgeError
+
+export type GraphError = t.TypeOf<typeof graphError>
+const graphError = t.type({
+	type: t.literal("validate/graph"),
+	message: t.string,
+})
+
+export function makeGraphError(message: string): GraphError {
+	return { type: "validate/graph", message }
+}
+
+export type NodeError = t.TypeOf<typeof nodeError>
+const nodeError = t.type({
+	type: t.literal("validate/node"),
+	id: t.string,
+	message: t.string,
+})
+
+export function makeNodeError(id: string, message: string): NodeError {
+	return { type: "validate/node", id, message }
+}
+
+export type EdgeError = t.TypeOf<typeof edgeError>
+const edgeError = t.type({
+	type: t.literal("validate/edge"),
+	id: t.string,
+	message: t.string,
+})
+
+export function makeEdgeError(id: string, message: string): EdgeError {
+	return { type: "validate/edge", id, message }
+}
+
+export interface Editor<State> {
+	backgroundColor?: React.CSSProperties["color"]
+	component: React.FC<{
+		state: State
+		setState: (state: State) => void
+	}>
+}
 
 export type Evaluate<State, Inputs extends Schemas, Outputs extends Schemas> = (
 	state: State,
@@ -63,8 +101,7 @@ const evaluateEventResult = t.type({ event: t.literal("result"), id: t.string })
 export type EvaluateEventFailure = t.TypeOf<typeof evaluateEventFailure>
 const evaluateEventFailure = t.type({
 	event: t.literal("failure"),
-	error: t.string,
-	id: t.union([t.null, t.string]),
+	error: t.union([graphError, nodeError, edgeError]),
 })
 
 export type EvaluateEventSuccess = t.TypeOf<typeof evaluateEventSuccess>
@@ -78,22 +115,14 @@ export const evaluateEvent = t.union([
 	evaluateEventSuccess,
 ])
 
-export const makeResultEvent = (id: string): EvaluateEventResult => ({
-	event: "result",
-	id,
-})
+export function makeResultEvent(id: string): EvaluateEventResult {
+	return { event: "result", id }
+}
 
-export const makeFailureEvent = (
-	id: string | null,
-	error: string
-): EvaluateEventFailure => ({ event: "failure", id, error })
+export function makeFailureEvent(error: ValidateError): EvaluateEventFailure {
+	return { event: "failure", error }
+}
 
-export const makeSuccessEvent = (): EvaluateEventSuccess => ({
-	event: "success",
-})
-
-export const invalidGraphEvent: EvaluateEventFailure = {
-	event: "failure",
-	error: "Invalid graph",
-	id: null,
+export function makeSuccessEvent(): EvaluateEventSuccess {
+	return { event: "success" }
 }

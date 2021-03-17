@@ -4,7 +4,7 @@ import { resolve } from "path"
 
 import { Kafka } from "kafkajs"
 
-import { EvaluateEvent, invalidGraphEvent } from "../types.js"
+import { EvaluateEvent, makeFailureEvent, makeGraphError } from "../types.js"
 
 import { Graph } from "../graph.js"
 
@@ -18,35 +18,47 @@ const kafka = new Kafka({ brokers: ["localhost:9092"] })
 const producer = kafka.producer()
 const consumer = kafka.consumer({ groupId: "pipeline-evaluate-runtime" })
 
+const evaluateTopic = "pipeline-evaluate"
+const evaluateEventTopic = "pipeline-evaluate-event"
+
 await producer.connect()
 await consumer.connect()
-await consumer.subscribe({ topic: "pipeline-evaluate" })
+await consumer.subscribe({ topic: evaluateTopic })
 
 await consumer.run({
 	eachMessage: async ({ topic, partition, message }) => {
-		const key = message.key.toString()
-		const directory = resolve(rootDirectory, key)
-		mkdirSync(directory)
-		if (message.value === null) {
-			return sendResult(key, invalidGraphEvent)
-		}
+		if (topic === evaluateTopic) {
+			const key = message.key.toString()
+			console.log("message key", key)
 
-		const graph = JSON.parse(message.value.toString("utf-8"))
-		if (!Graph.is(graph)) {
-			return sendResult(key, invalidGraphEvent)
-		}
+			if (message.value === null) {
+				const error = makeGraphError("No message value")
+				return sendResult(key, makeFailureEvent(error))
+			}
 
-		for await (const event of evaluate(key, graph, directory)) {
-			await sendResult(key, event)
-		}
+			const graph = JSON.parse(message.value.toString("utf-8"))
+			if (!Graph.is(graph)) {
+				const error = makeGraphError("Invalid graph value")
+				return sendResult(key, makeFailureEvent(error))
+			}
 
-		// rmdirSync(directory)
+			const directory = resolve(rootDirectory, key)
+			mkdirSync(directory)
+
+			console.log("job directory", directory)
+
+			for await (const event of evaluate(directory, graph)) {
+				await sendResult(key, event)
+			}
+
+			// rmdirSync(directory)
+		}
 	},
 })
 
 async function sendResult(key: string, result: EvaluateEvent) {
 	await producer.send({
-		topic: "pipeline-evaluate-event",
+		topic: evaluateEventTopic,
 		messages: [{ key, value: JSON.stringify(result) }],
 	})
 }

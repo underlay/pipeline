@@ -1,9 +1,7 @@
 import { readFileSync, writeFileSync } from "fs"
 import { resolve } from "path"
 
-import { left, right, Either } from "fp-ts/Either"
-
-import { Schema, Instance } from "@underlay/apg"
+import { Schema, Instance, validateInstance } from "@underlay/apg"
 import { encode, decode } from "@underlay/apg-format-binary"
 import schemaSchema, {
 	SchemaSchema,
@@ -18,17 +16,19 @@ import {
 	makeFailureEvent,
 	makeResultEvent,
 	makeSuccessEvent,
-	invalidGraphEvent,
 	Evaluate,
+	makeGraphError,
+	makeNodeError,
+	Schemas,
+	makeEdgeError,
 } from "../types.js"
-import { Blocks, blocks, isKind } from "../blocks/index.js"
+import { Blocks, blocks, isBlockKind } from "../blocks/index.js"
 import { domainEqual } from "../utils.js"
-import runtimes from "../blocks/runtimes.js"
+import { runtimes } from "../blocks/runtimes.js"
 
 export default async function* evaluate(
-	key: string,
-	graph: Graph,
-	directory: string
+	directory: string,
+	graph: Graph
 ): AsyncGenerator<
 	EvaluateEventResult | EvaluateEventFailure | EvaluateEventSuccess,
 	void,
@@ -36,76 +36,86 @@ export default async function* evaluate(
 > {
 	const order = sortGraph(graph)
 	if (order === null) {
-		return yield invalidGraphEvent
+		const error = makeGraphError("Cycle detected")
+		return yield makeFailureEvent(error)
 	}
 
-	const schemas: Record<string, Record<string, Schema.Schema>> = {}
+	const schemas: Record<string, Schema.Schema> = {}
 
-	for (const id of order) {
-		const node = graph.nodes[id]
+	for (const nodeId of order) {
+		const node = graph.nodes[nodeId]
 
-		if (!isKind(node.kind)) {
-			return yield makeFailureEvent(id, "Invalid node kind")
+		if (!isBlockKind(node.kind)) {
+			const message = `Invalid node kind: ${JSON.stringify(node.kind)}`
+			const error = makeNodeError(nodeId, message)
+			return yield makeFailureEvent(error)
 		}
 
 		const block = blocks[node.kind]
 		if (!block.state.is(node.state)) {
-			return yield makeFailureEvent(id, "Invalid node state")
+			const error = makeNodeError(nodeId, "Invalid state")
+			return yield makeFailureEvent(error)
 		} else if (!domainEqual(block.inputs, node.inputs)) {
-			return yield makeFailureEvent(id, "Missing or extra inputs")
+			const error = makeNodeError(nodeId, "Missing or extra inputs")
+			return yield makeFailureEvent(error)
 		} else if (!domainEqual(block.outputs, node.outputs)) {
-			return yield makeFailureEvent(id, "Missing or extra outputs")
+			const error = makeNodeError(nodeId, "Missing or extra outputs")
+			return yield makeFailureEvent(error)
 		}
 
 		const inputSchemas: Record<string, Schema.Schema> = {}
 		for (const [input, edgeId] of Object.entries(node.inputs)) {
-			const { source } = graph.edges[edgeId]
-			const { id: sourceId, output } = source
-			if (sourceId in schemas && output in schemas[sourceId]) {
-				inputSchemas[input] = schemas[sourceId][output]
-			} else {
-				return yield invalidGraphEvent
+			inputSchemas[input] = schemas[edgeId]
+		}
+
+		for (const [input, codec] of Object.entries(block.inputs)) {
+			if (!codec.is(inputSchemas[input])) {
+				const id = node.inputs[input]
+				const error = makeEdgeError(id, "Input failed validation")
+				return yield makeFailureEvent(error)
 			}
 		}
 
-		if (!validateInputs(node.kind, inputSchemas)) {
-			return yield makeFailureEvent(id, "Input schemas failed validation")
-		}
-
+		// This is probably the most likely part of evaluation to fail,
+		// adding some kind of error handling here would be smart
 		const inputInstances = readInputInstances<keyof Blocks>(
 			directory,
 			graph,
-			id,
+			nodeId,
 			inputSchemas
 		)
 
-		// TS doesn't know that e.g. node.kind and node.state are coordinated,
-		// so runtimes[node.kind] expects an *intersection* of all state types.
-		// So we have to force-distribute the union from
-		// Evaluate<AS, AI, AO> | Evaluate<BS, BI, BO> | ...
-		// to
-		// Evaluate<AS | BS | ..., AI | BI | ..., AO | BO | ...>
-		// This definitely isn't the best overall approach but it works for now.
-		type B = Blocks[keyof Blocks]
-		const evaluate = runtimes[node.kind] as Evaluate<
-			B["state"],
-			B["inputs"],
-			B["outputs"]
-		>
+		// TS doesn't know that node.kind and node.state are coordinated,
+		// or else this would typecheck without coersion
+		const evaluate = runtimes[node.kind] as Evaluate<any, Schemas, Schemas>
 
 		const event = await evaluate(node.state, inputSchemas, inputInstances)
 			.then((result) => {
-				schemas[id] = result.schemas
-				for (const [output, schema] of Object.entries(result.schemas)) {
-					writeSchema(directory, { id, output }, schema)
+				for (const [output, codec] of Object.entries(block.outputs)) {
+					const schema = result.schemas[output]
+					const instance = result.instances[output]
+					if (!codec.is(schema)) {
+						const message = `Node produced an invalid schema for output ${output}`
+						const error = makeNodeError(nodeId, message)
+						return makeFailureEvent(error)
+					} else if (!validateInstance(schema, instance)) {
+						const message = `Node produced an invalid instance for output ${output}`
+						const error = makeNodeError(nodeId, message)
+						return makeFailureEvent(error)
+					} else {
+						for (const edgeId of node.outputs[output]) {
+							schemas[edgeId] = schema
+						}
+						writeSchema(directory, { id: nodeId, output }, schema)
+						writeInstance(directory, { id: nodeId, output }, schema, instance)
+					}
 				}
-				for (const [output, instance] of Object.entries(result.instances)) {
-					const schema = schemas[id][output]
-					writeInstance(directory, { id, output }, schema, instance)
-				}
-				return makeResultEvent(id)
+				return makeResultEvent(nodeId)
 			})
-			.catch((err) => makeFailureEvent(id, err.toString()))
+			.catch((err) => {
+				const error = makeNodeError(nodeId, err.toString())
+				return makeFailureEvent(error)
+			})
 
 		if (event.event === "failure") {
 			return yield event
@@ -151,20 +161,6 @@ const writeInstance = <S extends Schema.Schema>(
 	instance: Instance.Instance<S>
 ) =>
 	writeFileSync(getInstancePath(directory, source), encode<S>(schema, instance))
-
-function validateInputs<K extends keyof Blocks>(
-	kind: K,
-	inputs: Record<string, Schema.Schema>
-): inputs is Blocks[K]["inputs"] {
-	for (const [input, codec] of Object.entries(blocks[kind].inputs)) {
-		if (input in inputs && codec.is(inputs[input])) {
-			continue
-		} else {
-			return false
-		}
-	}
-	return true
-}
 
 type InputInstances<Inputs extends Record<string, Schema.Schema>> = {
 	[i in keyof Inputs]: Instance.Instance<Inputs[i]>

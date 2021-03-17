@@ -17,7 +17,7 @@ export declare const blocks: {
     }, import("./csv-import/index.js").Inputs, import("./csv-import/index.js").Outputs>;
     "collection-export": Block<import("./collection-export/index.js").State, import("./collection-export/index.js").Inputs, import("./collection-export/index.js").Outputs>;
 };
-export declare const isKind: (key: string) => key is "csv-import" | "collection-export";
+export declare const isBlockKind: (key: string) => key is "csv-import" | "collection-export";
 export declare type Blocks = {
     [key in keyof typeof blocks]: typeof blocks[key] extends Block<infer State, infer Inputs, infer Outputs> ? {
         state: State;

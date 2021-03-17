@@ -1,22 +1,24 @@
 import * as t from "io-ts"
 
+export const node = t.type({
+	kind: t.string,
+	inputs: t.record(t.string, t.string),
+	outputs: t.record(t.string, t.array(t.string)),
+	state: t.unknown,
+})
+
+export type Node = t.TypeOf<typeof node>
+
+export const edge = t.type({
+	source: t.type({ id: t.string, output: t.string }),
+	target: t.type({ id: t.string, input: t.string }),
+})
+
+export type Edge = t.TypeOf<typeof edge>
+
 const baseGraphType = t.type({
-	nodes: t.record(
-		t.string,
-		t.type({
-			kind: t.string,
-			inputs: t.record(t.string, t.string),
-			outputs: t.record(t.string, t.array(t.string)),
-			state: t.unknown,
-		})
-	),
-	edges: t.record(
-		t.string,
-		t.type({
-			source: t.type({ id: t.string, output: t.string }),
-			target: t.type({ id: t.string, input: t.string }),
-		})
-	),
+	nodes: t.record(t.string, node),
+	edges: t.record(t.string, edge),
 })
 
 interface GraphBrand {
@@ -24,7 +26,7 @@ interface GraphBrand {
 }
 
 // The Graph codec validates basic graph structure;
-// it does *not* check for cycles or for codec & block kind consistency
+// it does *not* check for cycles or for codec & block kind interfaces
 export const Graph = t.brand(
 	baseGraphType,
 	(g): g is t.Branded<t.TypeOf<typeof baseGraphType>, GraphBrand> => {

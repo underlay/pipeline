@@ -1,4 +1,4 @@
-import { State } from "../index.js";
 import { Editor } from "../../../types.js";
-declare const CsvImportEditor: Editor<State>;
-export default CsvImportEditor;
+import { State } from "../index.js";
+declare const CollectionExportEditor: Editor<State>;
+export default CollectionExportEditor;

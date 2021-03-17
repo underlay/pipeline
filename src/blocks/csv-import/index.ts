@@ -35,7 +35,8 @@ const codec: Block<State, Inputs, Outputs> = {
 	state: state,
 	inputs: {},
 	outputs: { output: table },
-	validate({ key, columns }, {}) {
+	initialValue: { file: null, key: "", header: true, columns: [] },
+	async validate({ key, columns }, {}) {
 		const components: Record<string, OptionalProperty> = {}
 		for (const column of columns) {
 			if (column !== null) {

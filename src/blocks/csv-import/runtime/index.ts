@@ -32,10 +32,9 @@ function parseProperty(
 	}
 }
 
-const evaluate: Evaluate<State, Inputs, Outputs> = (state, {}, {}) =>
-	new Promise((resolve, reject) => {
-		const schemas = block.validate(state, {})
-
+const evaluate: Evaluate<State, Inputs, Outputs> = async (state, {}, {}) => {
+	const schemas = await block.validate(state, {})
+	return new Promise(async (resolve, reject) => {
 		const { file } = state
 		if (file === null) {
 			throw new Error("No file")
@@ -105,5 +104,6 @@ const evaluate: Evaluate<State, Inputs, Outputs> = (state, {}, {}) =>
 
 		fetch(file).then((res) => res.body.pipe(stream))
 	})
+}
 
 export default evaluate

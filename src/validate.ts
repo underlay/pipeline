@@ -1,88 +1,111 @@
 import { Schema } from "@underlay/apg"
 import { left, right, Either } from "fp-ts/Either"
 
-import { Validate } from "./types.js"
+import {
+	makeEdgeError,
+	makeGraphError,
+	makeNodeError,
+	Schemas,
+	Validate,
+	ValidateError,
+} from "./types.js"
 import { Graph, sortGraph } from "./graph.js"
 import { domainEqual } from "./utils.js"
 
-import { Blocks, blocks, isKind } from "./blocks/index.js"
+import { blocks, isBlockKind } from "./blocks/index.js"
 
-export default function validate(
-	graph: Graph
-): Either<
-	{ id: string | null; message: string },
-	Record<string, Record<string, Schema.Schema>>
-> {
+/**
+ * Validation is actually a complicated process; it doesn't result in just "success/failure"
+ * There are four distinct *classes* of results:
+ * 1. validation succeeds and results in a Record<string, Schema> value
+ * 2. validation fails because one of the node's async .validate() methods threw an error (a "node error")
+ * 3. validation fails because one of the inputs didn't validate its input codec (a "edge error")
+ * 4. validation fails because the graph is invalid (a "graph error" due to cycles, broken connections, etc)
+ * For most purposes (e.g. a GUI pipeline editor) we actually want to do different things for each case,
+ * so the return value of validate() has to distinguish them all. We do this by returning at the top level
+ * a Either<ValidateError, Record<string, Schema>> object, where ValidateError is a discriminated union of cases 2/3/4,
+ * and Record<string, Schema> is a map from edge IDs to schemas.
+ */
+
+type ValidateResult = Either<ValidateError[], Record<string, Schema.Schema>>
+
+export default async function validate(graph: Graph): Promise<ValidateResult> {
+	const errors: ValidateError[] = []
+	const schemas: Record<string, Schema.Schema> = {}
+
 	const order = sortGraph(graph)
 	if (order === null) {
-		return left({ id: null, message: "Cycle detected" })
+		return left([makeGraphError("Cycle detected")])
 	}
 
-	const schemas: Record<string, Record<string, Schema.Schema>> = {}
+	for (const nodeId of order) {
+		const node = graph.nodes[nodeId]
 
-	for (const id of order) {
-		const node = graph.nodes[id]
-
-		if (!isKind(node.kind)) {
-			return left({
-				id,
-				message: `Invalid node kind: ${JSON.stringify(node.kind)}`,
-			})
+		if (!isBlockKind(node.kind)) {
+			const message = `Invalid node kind: ${JSON.stringify(node.kind)}`
+			errors.push(makeNodeError(nodeId, message))
+			continue
 		}
 
-		const codec = blocks[node.kind]
-		if (!codec.state.is(node.state)) {
-			return left({ id, message: "Invalid state" })
-		} else if (!domainEqual(codec.inputs, node.inputs)) {
-			return left({ id, message: "Missing or extra inputs" })
-		} else if (!domainEqual(codec.outputs, node.outputs)) {
-			return left({ id, message: "Missing or extra outputs" })
+		const block = blocks[node.kind]
+
+		if (!block.state.is(node.state)) {
+			errors.push(makeNodeError(nodeId, "Invalid state"))
+			continue
+		} else if (!domainEqual(block.inputs, node.inputs)) {
+			errors.push(makeNodeError(nodeId, "Missing or extra inputs"))
+			continue
+		} else if (!domainEqual(block.outputs, node.outputs)) {
+			errors.push(makeNodeError(nodeId, "Missing or extra outputs"))
+			continue
 		}
 
 		const inputs: Record<string, Schema.Schema> = {}
 		for (const [input, edgeId] of Object.entries(node.inputs)) {
-			const {
-				source: { id: sourceId, output },
-			} = graph.edges[edgeId]
-			if (sourceId in schemas && output in schemas[sourceId]) {
-				inputs[input] = schemas[sourceId][output]
-			} else {
-				return left({ id: null, message: "Invalid graph" })
+			// These might not be present if previous nodes failed validation.
+			// But it's not an error on this nodes behalf, so we just continue
+			if (edgeId in schemas) {
+				inputs[input] = schemas[edgeId]
 			}
 		}
 
-		if (!validateInputs(node.kind, inputs)) {
-			return left({ id, message: "Input schemas failed validation" })
+		for (const [input, codec] of Object.entries(block.inputs)) {
+			if (input in inputs && !codec.is(inputs[input])) {
+				const id = node.inputs[input]
+				errors.push(makeEdgeError(id, "Input failed validation"))
+			}
 		}
 
-		// We have to do a little type coercion to pivot from
-		// Validate<AS, AI, AO> | Evaluate<BS, BI, BO> | ...
-		// to
-		// Validate<AS | BS | ..., AI | BI | ..., AO | BO | ...>
-		// since TS doesn't know that e.g. node.kind and node.state are coordinated.
-		type B = Blocks[keyof Blocks]
-		const validate = codec.validate as Validate<
-			B["state"],
-			B["inputs"],
-			B["outputs"]
-		>
-
-		schemas[id] = validate(node.state, inputs)
-	}
-
-	return right(schemas)
-}
-
-function validateInputs<K extends keyof Blocks>(
-	kind: K,
-	inputs: Record<string, Schema.Schema>
-): inputs is Blocks[K]["inputs"] {
-	for (const [input, codec] of Object.entries(blocks[kind].inputs)) {
-		if (input in inputs && codec.is(inputs[input])) {
+		// If we're missing any inputs, skip this node
+		if (!domainEqual(block.inputs, inputs)) {
 			continue
-		} else {
-			return false
 		}
+
+		// TS doesn't know that node.kind and node.state are coordinated,
+		// or else this would typecheck without coersion
+		const validate = block.validate as Validate<any, Schemas, Schemas>
+		await validate(node.state, inputs)
+			.then((outputs) => {
+				for (const [output, codec] of Object.entries(block.outputs)) {
+					if (!codec.is(outputs[output])) {
+						throw new Error(
+							`Node produced an invalid schema for output ${output}`
+						)
+					} else {
+						for (const edgeId of node.outputs[output]) {
+							schemas[edgeId] = outputs[output]
+						}
+					}
+				}
+			})
+			.catch((error) => errors.push(makeNodeError(nodeId, error.toString())))
 	}
-	return true
+
+	if (errors.length > 0) {
+		return left(errors)
+	} else if (domainEqual(graph.edges, schemas)) {
+		return right(schemas)
+	} else {
+		throw new Error("Internal validation error")
+	}
 }

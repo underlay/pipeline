@@ -8,7 +8,7 @@ export const blocks = {
 	"collection-export": CollectionExport,
 }
 
-export const isKind = (key: string): key is keyof Blocks => key in blocks
+export const isBlockKind = (key: string): key is keyof Blocks => key in blocks
 
 export type Blocks = {
 	[key in keyof typeof blocks]: typeof blocks[key] extends Block<

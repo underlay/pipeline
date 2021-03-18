@@ -5,7 +5,13 @@ export declare type Schemas = Record<string, Schema.Schema>;
 export declare type Instances = Record<string, Instance.Instance>;
 export declare type Paths = Record<string, string>;
 export declare type Codec<S extends Schema.Schema> = t.Type<S, S, Schema.Schema>;
-export interface Block<State, Inputs extends Schemas, Outputs extends Schemas> {
+export declare type JsonObject = {
+    [Key in string]: JsonValue;
+};
+export interface JsonArray extends Array<JsonValue> {
+}
+export declare type JsonValue = string | number | boolean | null | JsonObject | JsonArray;
+export interface Block<State extends JsonObject, Inputs extends Schemas, Outputs extends Schemas> {
     state: t.Type<State>;
     inputs: {
         [i in keyof Inputs]: Codec<Inputs[i]>;
@@ -17,7 +23,7 @@ export interface Block<State, Inputs extends Schemas, Outputs extends Schemas> {
     validate: Validate<State, Inputs, Outputs>;
 }
 export declare const schema: Codec<Schema.Schema>;
-export declare type Validate<State, Inputs extends Schemas, Outputs extends Schemas> = (state: State, schemas: Inputs) => Promise<Outputs>;
+export declare type Validate<State extends JsonObject, Inputs extends Schemas, Outputs extends Schemas> = (state: State, schemas: Inputs) => Promise<Outputs>;
 export declare type ValidateError = GraphError | NodeError | EdgeError;
 export declare type GraphError = t.TypeOf<typeof graphError>;
 declare const graphError: t.TypeC<{
@@ -39,14 +45,15 @@ declare const edgeError: t.TypeC<{
     message: t.StringC;
 }>;
 export declare function makeEdgeError(id: string, message: string): EdgeError;
-export interface Editor<State> {
+export interface Editor<State extends JsonObject> {
+    name: string;
     backgroundColor?: React.CSSProperties["color"];
     component: React.FC<{
         state: State;
         setState: (state: State) => void;
     }>;
 }
-export declare type Evaluate<State, Inputs extends Schemas, Outputs extends Schemas> = (state: State, schemas: Inputs, instances: {
+export declare type Evaluate<State extends JsonObject, Inputs extends Schemas, Outputs extends Schemas> = (state: State, schemas: Inputs, instances: {
     [input in keyof Inputs]: Instance.Instance<Inputs[input]>;
 }) => Promise<{
     schemas: Outputs;

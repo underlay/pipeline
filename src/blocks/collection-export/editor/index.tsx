@@ -6,6 +6,7 @@ import { Editor } from "../../../types.js"
 import { State } from "../index.js"
 
 const CollectionExportEditor: Editor<State> = {
+	name: "Collection Export",
 	component({ state, setState }) {
 		return <div></div>
 	},

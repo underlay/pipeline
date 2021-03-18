@@ -8,5 +8,5 @@ export declare type Inputs = {
     input: Schema.Schema;
 };
 export declare type Outputs = {};
-declare const codec: Block<State, Inputs, Outputs>;
-export default codec;
+declare const block: Block<State, Inputs, Outputs>;
+export default block;

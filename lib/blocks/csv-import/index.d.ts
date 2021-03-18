@@ -22,5 +22,5 @@ declare const state: t.TypeC<{
         }>]>;
     }>]>>;
 }>;
-declare const codec: Block<State, Inputs, Outputs>;
-export default codec;
+declare const block: Block<State, Inputs, Outputs>;
+export default block;

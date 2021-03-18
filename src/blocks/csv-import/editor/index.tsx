@@ -6,6 +6,7 @@ import { Editor } from "../../../types.js"
 import { State } from "../index.js"
 
 const CsvImportEditor: Editor<State> = {
+	name: "CSV Import",
 	backgroundColor: "lavender",
 	component({ state, setState }) {
 		return <div></div>

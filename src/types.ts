@@ -11,7 +11,22 @@ export type Paths = Record<string, string>
 
 export type Codec<S extends Schema.Schema> = t.Type<S, S, Schema.Schema>
 
-export interface Block<State, Inputs extends Schemas, Outputs extends Schemas> {
+//https://github.com/sindresorhus/type-fest/
+export type JsonObject = { [Key in string]: JsonValue }
+export interface JsonArray extends Array<JsonValue> {}
+export type JsonValue =
+	| string
+	| number
+	| boolean
+	| null
+	| JsonObject
+	| JsonArray
+
+export interface Block<
+	State extends JsonObject,
+	Inputs extends Schemas,
+	Outputs extends Schemas
+> {
 	state: t.Type<State>
 	inputs: { [i in keyof Inputs]: Codec<Inputs[i]> }
 	outputs: {
@@ -27,10 +42,11 @@ export const schema: Codec<Schema.Schema> = new t.Type<
 	Schema.Schema
 >("schema", apg.is, t.success, t.identity)
 
-export type Validate<State, Inputs extends Schemas, Outputs extends Schemas> = (
-	state: State,
-	schemas: Inputs
-) => Promise<Outputs>
+export type Validate<
+	State extends JsonObject,
+	Inputs extends Schemas,
+	Outputs extends Schemas
+> = (state: State, schemas: Inputs) => Promise<Outputs>
 
 export type ValidateError = GraphError | NodeError | EdgeError
 
@@ -66,7 +82,8 @@ export function makeEdgeError(id: string, message: string): EdgeError {
 	return { type: "validate/edge", id, message }
 }
 
-export interface Editor<State> {
+export interface Editor<State extends JsonObject> {
+	name: string
 	backgroundColor?: React.CSSProperties["color"]
 	component: React.FC<{
 		state: State
@@ -74,7 +91,11 @@ export interface Editor<State> {
 	}>
 }
 
-export type Evaluate<State, Inputs extends Schemas, Outputs extends Schemas> = (
+export type Evaluate<
+	State extends JsonObject,
+	Inputs extends Schemas,
+	Outputs extends Schemas
+> = (
 	state: State,
 	schemas: Inputs,
 	instances: { [input in keyof Inputs]: Instance.Instance<Inputs[input]> }

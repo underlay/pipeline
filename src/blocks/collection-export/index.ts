@@ -11,7 +11,7 @@ export type State = {
 export type Inputs = { input: Schema.Schema }
 export type Outputs = {}
 
-const codec: Block<State, Inputs, Outputs> = {
+const block: Block<State, Inputs, Outputs> = {
 	state: t.type({ host: t.string, id: t.string }),
 	inputs: { input: schema },
 	outputs: {},
@@ -21,4 +21,4 @@ const codec: Block<State, Inputs, Outputs> = {
 	},
 }
 
-export default codec
+export default block

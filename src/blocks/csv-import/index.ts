@@ -31,7 +31,7 @@ const state = t.type({
 	),
 })
 
-const codec: Block<State, Inputs, Outputs> = {
+const block: Block<State, Inputs, Outputs> = {
 	state: state,
 	inputs: {},
 	outputs: { output: table },
@@ -61,4 +61,4 @@ const codec: Block<State, Inputs, Outputs> = {
 	},
 }
 
-export default codec
+export default block

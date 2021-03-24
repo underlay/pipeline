@@ -15,7 +15,11 @@ export declare const blocks: {
             };
         } | null)[];
     }, import("./csv-import/index.js").Inputs, import("./csv-import/index.js").Outputs>;
-    "collection-export": Block<import("./collection-export/index.js").State, import("./collection-export/index.js").Inputs, import("./collection-export/index.js").Outputs>;
+    "collection-export": Block<{
+        etag: string | null;
+        url: string | null;
+        readme: string | null;
+    }, import("./collection-export/index.js").Inputs, import("./collection-export/index.js").Outputs>;
 };
 export declare const isBlockKind: (key: string) => key is "csv-import" | "collection-export";
 export declare type Blocks = {

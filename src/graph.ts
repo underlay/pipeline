@@ -1,5 +1,7 @@
 import * as t from "io-ts"
 
+import { validateGraphTopology } from "./topology.js"
+
 export const node = t.type({
 	kind: t.string,
 	inputs: t.record(t.string, t.string),
@@ -16,7 +18,7 @@ export const edge = t.type({
 
 export type Edge = t.TypeOf<typeof edge>
 
-const baseGraphType = t.type({
+export const baseGraph = t.type({
 	nodes: t.record(t.string, node),
 	edges: t.record(t.string, edge),
 })
@@ -28,60 +30,15 @@ interface GraphBrand {
 // The Graph codec validates basic graph structure;
 // it does *not* check for cycles or for codec & block kind interfaces
 export const Graph = t.brand(
-	baseGraphType,
-	(g): g is t.Branded<t.TypeOf<typeof baseGraphType>, GraphBrand> => {
-		if (!baseGraphType.is(g)) {
-			return false
-		}
-
-		const targetEdgeIds = new Set(Object.keys(g.edges))
-		const sourceEdgeIds = new Set(Object.keys(g.edges))
-
-		for (const [id, node] of Object.entries(g.nodes)) {
-			// Check that the inputs reference real edges
-			for (const [input, edgeId] of Object.entries(node.inputs)) {
-				if (
-					edgeId in g.edges &&
-					g.edges[edgeId].target.id === id &&
-					g.edges[edgeId].target.input === input &&
-					targetEdgeIds.delete(edgeId)
-				) {
-					continue
-				} else {
-					return false
-				}
-			}
-
-			// Check that the outputs reference real edges
-			for (const [output, ids] of Object.entries(node.outputs)) {
-				for (const edgeId of ids) {
-					if (
-						edgeId in g.edges &&
-						g.edges[edgeId].source.id === id &&
-						g.edges[edgeId].source.output === output &&
-						sourceEdgeIds.delete(edgeId)
-					) {
-						continue
-					} else {
-						return false
-					}
-				}
-			}
-		}
-
-		// Make sure there are no extraneous edges
-		if (targetEdgeIds.size > 0 || sourceEdgeIds.size > 0) {
-			return false
-		}
-
-		return true
-	},
+	baseGraph,
+	(graph): graph is t.Branded<t.TypeOf<typeof baseGraph>, GraphBrand> =>
+		validateGraphTopology(graph),
 	"Graph"
 )
 
 export type Graph = t.TypeOf<typeof Graph>
 
-// https://en.wikipedia.org/wiki/Topological_sorting#Kahn's_algorithm 😇
+// https://en.wikipedia.org/wiki/Topological_sorting#Kahn's_algorithm
 export function sortGraph(graph: Graph): null | string[] {
 	const edges = { ...graph.edges }
 	const s: string[] = []

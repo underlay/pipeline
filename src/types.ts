@@ -1,4 +1,3 @@
-import React from "react"
 import * as t from "io-ts"
 
 import { Schema, Instance } from "@underlay/apg"
@@ -27,6 +26,7 @@ export interface Block<
 	Inputs extends Schemas,
 	Outputs extends Schemas
 > {
+	name: string
 	state: t.Type<State>
 	inputs: { [i in keyof Inputs]: Codec<Inputs[i]> }
 	outputs: {
@@ -34,6 +34,7 @@ export interface Block<
 	}
 	initialValue: State
 	validate: Validate<State, Inputs, Outputs>
+	backgroundColor?: string
 }
 
 export const schema: Codec<Schema.Schema> = new t.Type<
@@ -46,12 +47,15 @@ export type Validate<
 	State extends JsonObject,
 	Inputs extends Schemas,
 	Outputs extends Schemas
-> = (state: State, schemas: Inputs) => Promise<Outputs>
+> = (
+	state: State,
+	inputs: { [input in keyof Inputs]: { schema: Inputs[input] } }
+) => Promise<{ [output in keyof Outputs]: { schema: Outputs[output] } }>
 
 export type ValidateError = GraphError | NodeError | EdgeError
 
 export type GraphError = t.TypeOf<typeof graphError>
-const graphError = t.type({
+export const graphError = t.type({
 	type: t.literal("validate/graph"),
 	message: t.string,
 })
@@ -61,7 +65,7 @@ export function makeGraphError(message: string): GraphError {
 }
 
 export type NodeError = t.TypeOf<typeof nodeError>
-const nodeError = t.type({
+export const nodeError = t.type({
 	type: t.literal("validate/node"),
 	id: t.string,
 	message: t.string,
@@ -72,7 +76,7 @@ export function makeNodeError(id: string, message: string): NodeError {
 }
 
 export type EdgeError = t.TypeOf<typeof edgeError>
-const edgeError = t.type({
+export const edgeError = t.type({
 	type: t.literal("validate/edge"),
 	id: t.string,
 	message: t.string,
@@ -80,70 +84,4 @@ const edgeError = t.type({
 
 export function makeEdgeError(id: string, message: string): EdgeError {
 	return { type: "validate/edge", id, message }
-}
-
-export interface Editor<State extends JsonObject> {
-	name: string
-	backgroundColor?: React.CSSProperties["color"]
-	component: React.FC<{
-		state: State
-		setState: (state: State) => void
-	}>
-}
-
-export type Evaluate<
-	State extends JsonObject,
-	Inputs extends Schemas,
-	Outputs extends Schemas
-> = (
-	state: State,
-	schemas: Inputs,
-	instances: { [input in keyof Inputs]: Instance.Instance<Inputs[input]> }
-) => Promise<{
-	schemas: Outputs
-	instances: { [output in keyof Outputs]: Instance.Instance<Outputs[output]> }
-}>
-
-// "start" is the start state; one start event is sent for every execution.
-// Transitions:
-// start -> result
-// start -> failure
-// result -> result
-// result -> failure
-// result -> success
-// Every evaluate terminates in either a success of failure event.
-
-export type EvaluateEventStart = t.TypeOf<typeof evaluateEventStart>
-const evaluateEventStart = t.type({ event: t.literal("start") })
-
-export type EvaluateEventResult = t.TypeOf<typeof evaluateEventResult>
-const evaluateEventResult = t.type({ event: t.literal("result"), id: t.string })
-
-export type EvaluateEventFailure = t.TypeOf<typeof evaluateEventFailure>
-const evaluateEventFailure = t.type({
-	event: t.literal("failure"),
-	error: t.union([graphError, nodeError, edgeError]),
-})
-
-export type EvaluateEventSuccess = t.TypeOf<typeof evaluateEventSuccess>
-const evaluateEventSuccess = t.type({ event: t.literal("success") })
-
-export type EvaluateEvent = t.TypeOf<typeof evaluateEvent>
-export const evaluateEvent = t.union([
-	evaluateEventStart,
-	evaluateEventResult,
-	evaluateEventFailure,
-	evaluateEventSuccess,
-])
-
-export function makeResultEvent(id: string): EvaluateEventResult {
-	return { event: "result", id }
-}
-
-export function makeFailureEvent(error: ValidateError): EvaluateEventFailure {
-	return { event: "failure", error }
-}
-
-export function makeSuccessEvent(): EvaluateEventSuccess {
-	return { event: "success" }
 }

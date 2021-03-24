@@ -12,7 +12,7 @@ import {
 import { Graph, sortGraph } from "./graph.js"
 import { domainEqual } from "./utils.js"
 
-import { blocks, isBlockKind } from "./blocks/index.js"
+import { blocks, isBlockKind } from "./index.js"
 
 /**
  * Validation is actually a complicated process; it doesn't result in just "success/failure"
@@ -60,19 +60,19 @@ export default async function validate(graph: Graph): Promise<ValidateResult> {
 			continue
 		}
 
-		const inputs: Record<string, Schema.Schema> = {}
+		const inputs: Record<string, { schema: Schema.Schema }> = {}
 		for (const [input, edgeId] of Object.entries(node.inputs)) {
 			// These might not be present if previous nodes failed validation.
 			// But it's not an error on this nodes behalf, so we just continue
 			if (edgeId in schemas) {
-				inputs[input] = schemas[edgeId]
+				inputs[input] = { schema: schemas[edgeId] }
 			}
 		}
 
 		for (const [input, codec] of Object.entries(block.inputs)) {
-			if (input in inputs && !codec.is(inputs[input])) {
-				const id = node.inputs[input]
-				errors.push(makeEdgeError(id, "Input failed validation"))
+			if (!codec.is(inputs[input])) {
+				const edgeId = node.inputs[input]
+				errors.push(makeEdgeError(edgeId, "Input failed validation"))
 			}
 		}
 
@@ -97,7 +97,7 @@ export default async function validate(graph: Graph): Promise<ValidateResult> {
 						)
 					} else {
 						for (const edgeId of node.outputs[output]) {
-							schemas[edgeId] = outputs[output]
+							schemas[edgeId] = outputs[output].schema
 						}
 					}
 				}

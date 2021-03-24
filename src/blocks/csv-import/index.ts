@@ -32,6 +32,8 @@ const state = t.type({
 })
 
 const block: Block<State, Inputs, Outputs> = {
+	name: "CSV Import",
+	backgroundColor: "lavender",
 	state: state,
 	inputs: {},
 	outputs: { output: table },
@@ -57,7 +59,8 @@ const block: Block<State, Inputs, Outputs> = {
 			}
 		}
 
-		return { output: { [key]: Schema.product(components) } }
+		const schema = { [key]: Schema.product(components) }
+		return { output: { schema } }
 	},
 }
 

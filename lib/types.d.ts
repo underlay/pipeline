@@ -1,4 +1,3 @@
-import React from "react";
 import * as t from "io-ts";
 import { Schema, Instance } from "@underlay/apg";
 export declare type Schemas = Record<string, Schema.Schema>;
@@ -12,6 +11,7 @@ export interface JsonArray extends Array<JsonValue> {
 }
 export declare type JsonValue = string | number | boolean | null | JsonObject | JsonArray;
 export interface Block<State extends JsonObject, Inputs extends Schemas, Outputs extends Schemas> {
+    name: string;
     state: t.Type<State>;
     inputs: {
         [i in keyof Inputs]: Codec<Inputs[i]>;
@@ -21,99 +21,36 @@ export interface Block<State extends JsonObject, Inputs extends Schemas, Outputs
     };
     initialValue: State;
     validate: Validate<State, Inputs, Outputs>;
+    backgroundColor?: string;
 }
 export declare const schema: Codec<Schema.Schema>;
-export declare type Validate<State extends JsonObject, Inputs extends Schemas, Outputs extends Schemas> = (state: State, schemas: Inputs) => Promise<Outputs>;
+export declare type Validate<State extends JsonObject, Inputs extends Schemas, Outputs extends Schemas> = (state: State, inputs: {
+    [input in keyof Inputs]: {
+        schema: Inputs[input];
+    };
+}) => Promise<{
+    [output in keyof Outputs]: {
+        schema: Outputs[output];
+    };
+}>;
 export declare type ValidateError = GraphError | NodeError | EdgeError;
 export declare type GraphError = t.TypeOf<typeof graphError>;
-declare const graphError: t.TypeC<{
+export declare const graphError: t.TypeC<{
     type: t.LiteralC<"validate/graph">;
     message: t.StringC;
 }>;
 export declare function makeGraphError(message: string): GraphError;
 export declare type NodeError = t.TypeOf<typeof nodeError>;
-declare const nodeError: t.TypeC<{
+export declare const nodeError: t.TypeC<{
     type: t.LiteralC<"validate/node">;
     id: t.StringC;
     message: t.StringC;
 }>;
 export declare function makeNodeError(id: string, message: string): NodeError;
 export declare type EdgeError = t.TypeOf<typeof edgeError>;
-declare const edgeError: t.TypeC<{
+export declare const edgeError: t.TypeC<{
     type: t.LiteralC<"validate/edge">;
     id: t.StringC;
     message: t.StringC;
 }>;
 export declare function makeEdgeError(id: string, message: string): EdgeError;
-export interface Editor<State extends JsonObject> {
-    name: string;
-    backgroundColor?: React.CSSProperties["color"];
-    component: React.FC<{
-        state: State;
-        setState: (state: State) => void;
-    }>;
-}
-export declare type Evaluate<State extends JsonObject, Inputs extends Schemas, Outputs extends Schemas> = (state: State, schemas: Inputs, instances: {
-    [input in keyof Inputs]: Instance.Instance<Inputs[input]>;
-}) => Promise<{
-    schemas: Outputs;
-    instances: {
-        [output in keyof Outputs]: Instance.Instance<Outputs[output]>;
-    };
-}>;
-export declare type EvaluateEventStart = t.TypeOf<typeof evaluateEventStart>;
-declare const evaluateEventStart: t.TypeC<{
-    event: t.LiteralC<"start">;
-}>;
-export declare type EvaluateEventResult = t.TypeOf<typeof evaluateEventResult>;
-declare const evaluateEventResult: t.TypeC<{
-    event: t.LiteralC<"result">;
-    id: t.StringC;
-}>;
-export declare type EvaluateEventFailure = t.TypeOf<typeof evaluateEventFailure>;
-declare const evaluateEventFailure: t.TypeC<{
-    event: t.LiteralC<"failure">;
-    error: t.UnionC<[t.TypeC<{
-        type: t.LiteralC<"validate/graph">;
-        message: t.StringC;
-    }>, t.TypeC<{
-        type: t.LiteralC<"validate/node">;
-        id: t.StringC;
-        message: t.StringC;
-    }>, t.TypeC<{
-        type: t.LiteralC<"validate/edge">;
-        id: t.StringC;
-        message: t.StringC;
-    }>]>;
-}>;
-export declare type EvaluateEventSuccess = t.TypeOf<typeof evaluateEventSuccess>;
-declare const evaluateEventSuccess: t.TypeC<{
-    event: t.LiteralC<"success">;
-}>;
-export declare type EvaluateEvent = t.TypeOf<typeof evaluateEvent>;
-export declare const evaluateEvent: t.UnionC<[t.TypeC<{
-    event: t.LiteralC<"start">;
-}>, t.TypeC<{
-    event: t.LiteralC<"result">;
-    id: t.StringC;
-}>, t.TypeC<{
-    event: t.LiteralC<"failure">;
-    error: t.UnionC<[t.TypeC<{
-        type: t.LiteralC<"validate/graph">;
-        message: t.StringC;
-    }>, t.TypeC<{
-        type: t.LiteralC<"validate/node">;
-        id: t.StringC;
-        message: t.StringC;
-    }>, t.TypeC<{
-        type: t.LiteralC<"validate/edge">;
-        id: t.StringC;
-        message: t.StringC;
-    }>]>;
-}>, t.TypeC<{
-    event: t.LiteralC<"success">;
-}>]>;
-export declare function makeResultEvent(id: string): EvaluateEventResult;
-export declare function makeFailureEvent(error: ValidateError): EvaluateEventFailure;
-export declare function makeSuccessEvent(): EvaluateEventSuccess;
-export {};

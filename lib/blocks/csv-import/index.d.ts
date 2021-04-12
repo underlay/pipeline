@@ -8,7 +8,7 @@ export declare type Outputs = {
     output: Table;
 };
 declare const state: t.TypeC<{
-    file: t.UnionC<[t.StringC, t.NullC]>;
+    uri: t.UnionC<[t.NullC, t.StringC]>;
     key: t.StringC;
     header: t.BooleanC;
     columns: t.ArrayC<t.UnionC<[t.NullC, t.TypeC<{

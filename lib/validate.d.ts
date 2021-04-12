@@ -1,6 +1,6 @@
 import { Schema } from "@underlay/apg";
 import { Either } from "fp-ts/Either";
-import { ValidateError } from "./types.js";
+import { ValidationError } from "./errors.js";
 import { Graph } from "./graph.js";
 /**
  * Validation is actually a complicated process; it doesn't result in just "success/failure"
@@ -11,9 +11,8 @@ import { Graph } from "./graph.js";
  * 4. validation fails because the graph is invalid (a "graph error" due to cycles, broken connections, etc)
  * For most purposes (e.g. a GUI pipeline editor) we actually want to do different things for each case,
  * so the return value of validate() has to distinguish them all. We do this by returning at the top level
- * a Either<ValidateError, Record<string, Schema>> object, where ValidateError is a discriminated union of cases 2/3/4,
+ * a Either<ValidationError, Record<string, Schema>> object, where ValidationError is a discriminated union of cases 2/3/4,
  * and Record<string, Schema> is a map from edge IDs to schemas.
  */
-declare type ValidateResult = Either<ValidateError[], Record<string, Schema.Schema>>;
-export default function validate(graph: Graph): Promise<ValidateResult>;
-export {};
+export declare type ValidateResult = Either<ValidationError[], Record<string, Schema.Schema>>;
+export declare function validate(graph: Graph): Promise<ValidateResult>;

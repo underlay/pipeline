@@ -1,7 +1,7 @@
 import { Block } from "../types.js";
 export declare const blocks: {
     "csv-import": Block<{
-        file: string | null;
+        uri: string | null;
         key: string;
         header: boolean;
         columns: ({
@@ -17,8 +17,8 @@ export declare const blocks: {
     }, import("./csv-import/index.js").Inputs, import("./csv-import/index.js").Outputs>;
     "collection-export": Block<{
         etag: string | null;
-        url: string | null;
-        readme: string | null;
+        id: string | null;
+        readme: string;
     }, import("./collection-export/index.js").Inputs, import("./collection-export/index.js").Outputs>;
 };
 export declare const isBlockKind: (key: string) => key is "csv-import" | "collection-export";

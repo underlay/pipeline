@@ -35,6 +35,7 @@ export declare const baseGraph: t.TypeC<{
         }>;
     }>>;
 }>;
+export declare type BaseGraph = t.TypeOf<typeof baseGraph>;
 interface GraphBrand {
     readonly Graph: unique symbol;
 }
@@ -57,5 +58,31 @@ export declare const Graph: t.BrandC<t.TypeC<{
     }>>;
 }>, GraphBrand>;
 export declare type Graph = t.TypeOf<typeof Graph>;
+export declare const isGraph: (graph: t.TypeOf<typeof baseGraph>) => graph is t.Branded<{
+    nodes: {
+        [x: string]: {
+            kind: string;
+            inputs: {
+                [x: string]: string;
+            };
+            outputs: {
+                [x: string]: string[];
+            };
+            state: unknown;
+        };
+    };
+    edges: {
+        [x: string]: {
+            source: {
+                id: string;
+                output: string;
+            };
+            target: {
+                id: string;
+                input: string;
+            };
+        };
+    };
+}, GraphBrand>;
 export declare function sortGraph(graph: Graph): null | string[];
 export {};

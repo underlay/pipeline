@@ -23,6 +23,8 @@ export const baseGraph = t.type({
 	edges: t.record(t.string, edge),
 })
 
+export type BaseGraph = t.TypeOf<typeof baseGraph>
+
 interface GraphBrand {
 	readonly Graph: unique symbol
 }
@@ -37,6 +39,9 @@ export const Graph = t.brand(
 )
 
 export type Graph = t.TypeOf<typeof Graph>
+
+export const isGraph = (graph: t.TypeOf<typeof baseGraph>): graph is Graph =>
+	validateGraphTopology(graph)
 
 // https://en.wikipedia.org/wiki/Topological_sorting#Kahn's_algorithm
 export function sortGraph(graph: Graph): null | string[] {

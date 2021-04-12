@@ -1,14 +1,15 @@
 import { Schema } from "@underlay/apg"
 import { left, right, Either } from "fp-ts/Either"
 
+import { Schemas, Validate } from "./types.js"
+
 import {
+	ValidationError,
 	makeEdgeError,
 	makeGraphError,
 	makeNodeError,
-	Schemas,
-	Validate,
-	ValidateError,
-} from "./types.js"
+} from "./errors.js"
+
 import { Graph, sortGraph } from "./graph.js"
 import { domainEqual } from "./utils.js"
 
@@ -23,14 +24,17 @@ import { blocks, isBlockKind } from "./index.js"
  * 4. validation fails because the graph is invalid (a "graph error" due to cycles, broken connections, etc)
  * For most purposes (e.g. a GUI pipeline editor) we actually want to do different things for each case,
  * so the return value of validate() has to distinguish them all. We do this by returning at the top level
- * a Either<ValidateError, Record<string, Schema>> object, where ValidateError is a discriminated union of cases 2/3/4,
+ * a Either<ValidationError, Record<string, Schema>> object, where ValidationError is a discriminated union of cases 2/3/4,
  * and Record<string, Schema> is a map from edge IDs to schemas.
  */
 
-type ValidateResult = Either<ValidateError[], Record<string, Schema.Schema>>
+export type ValidateResult = Either<
+	ValidationError[],
+	Record<string, Schema.Schema>
+>
 
-export default async function validate(graph: Graph): Promise<ValidateResult> {
-	const errors: ValidateError[] = []
+export async function validate(graph: Graph): Promise<ValidateResult> {
+	const errors: ValidationError[] = []
 	const schemas: Record<string, Schema.Schema> = {}
 
 	const order = sortGraph(graph)
@@ -70,7 +74,7 @@ export default async function validate(graph: Graph): Promise<ValidateResult> {
 		}
 
 		for (const [input, codec] of Object.entries(block.inputs)) {
-			if (!codec.is(inputs[input])) {
+			if (input in inputs && !codec.is(inputs[input].schema)) {
 				const edgeId = node.inputs[input]
 				errors.push(makeEdgeError(edgeId, "Input failed validation"))
 			}
@@ -87,13 +91,13 @@ export default async function validate(graph: Graph): Promise<ValidateResult> {
 		await validate(node.state, inputs)
 			.then((outputs) => {
 				for (const [output, codec] of Object.entries(block.outputs)) {
-					if (output in outputs) {
+					if (!(output in outputs)) {
 						throw new Error(
 							"Node validation did not return all the required outputs"
 						)
-					} else if (!codec.is(outputs[output])) {
+					} else if (!codec.is(outputs[output].schema)) {
 						throw new Error(
-							`Node produced an invalid schema for output ${output}`
+							`Node produced an invalid schema for output "${output}"`
 						)
 					} else {
 						for (const edgeId of node.outputs[output]) {
@@ -102,7 +106,11 @@ export default async function validate(graph: Graph): Promise<ValidateResult> {
 					}
 				}
 			})
-			.catch((error) => errors.push(makeNodeError(nodeId, error.toString())))
+			.catch((error) => {
+				const message =
+					error instanceof Error ? error.message : error.toString()
+				errors.push(makeNodeError(nodeId, message))
+			})
 	}
 
 	if (errors.length > 0) {

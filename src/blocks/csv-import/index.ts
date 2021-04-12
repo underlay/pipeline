@@ -13,7 +13,7 @@ export type Inputs = {}
 export type Outputs = { output: Table }
 
 const state = t.type({
-	file: t.union([t.string, t.null]),
+	uri: t.union([t.null, t.string]),
 	key: t.string,
 	header: t.boolean,
 	columns: t.array(
@@ -37,8 +37,23 @@ const block: Block<State, Inputs, Outputs> = {
 	state: state,
 	inputs: {},
 	outputs: { output: table },
-	initialValue: { file: null, key: "", header: true, columns: [] },
-	async validate({ key, columns }, {}) {
+	initialValue: {
+		uri: null,
+		key: "",
+		header: true,
+		columns: [],
+	},
+	async validate({ uri, key, columns }, {}) {
+		if (uri === null) {
+			throw new Error("Missing file from CSV import block")
+		}
+
+		try {
+			new URL(key)
+		} catch (err) {
+			throw new Error("The row class key must be a valid URI")
+		}
+
 		const components: Record<string, OptionalProperty> = {}
 		for (const column of columns) {
 			if (column !== null) {
